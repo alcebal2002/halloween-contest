@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halloween Contest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="fog" aria-hidden="true"></div>
+
+<p id="storage-banner" class="storage-banner" hidden>Progress can't be saved in this browser.</p>
+
+<main class="card">
+  <header class="masthead">
+    <span class="deco" aria-hidden="true">🎃 👻 🦇</span>
+    <h1 class="title">Halloween Contest</h1>
+    <p class="tagline">Answer the questions if you dare.</p>
+  </header>
+
+  <section id="screen-nickname" class="screen">
+    <div class="field">
+      <label for="nickname">Nickname</label>
+      <input id="nickname" type="text" maxlength="24" autocomplete="off" placeholder="e.g. GhostRider">
+      <p id="nickname-error" class="field-error" role="alert" hidden></p>
+      <p id="nickname-note" class="field-note" hidden>The question set changed &mdash; starting over.</p>
+    </div>
+    <button id="btn-start" class="btn btn-primary" type="button">Start</button>
+  </section>
+
+  <section id="screen-welcome-back" class="screen" hidden>
+    <h2 id="welcome-back-name"></h2>
+    <p id="welcome-back-progress" class="progress"></p>
+    <div class="actions">
+      <button id="btn-continue" class="btn btn-primary" type="button">Continue</button>
+      <button id="btn-start-over" class="btn btn-ghost" type="button">Start over</button>
+    </div>
+  </section>
+
+  <section id="screen-question" class="screen" hidden>
+    <p id="question-progress" class="progress"></p>
+    <h2 id="question-text"></h2>
+    <div id="question-options" class="options" role="group" aria-label="Answer options"></div>
+  </section>
+
+  <section id="screen-feedback" class="screen" hidden>
+    <p id="feedback-progress" class="progress"></p>
+    <h2 id="feedback-text"></h2>
+    <div id="feedback-options" class="options"></div>
+    <p id="feedback-verdict" class="verdict" aria-live="polite"></p>
+    <button id="btn-next" class="btn btn-primary" type="button">Next</button>
+  </section>
+
+  <section id="screen-results" class="screen" hidden>
+    <p class="progress">Finished</p>
+    <h2 id="results-title"></h2>
+    <p id="results-score" class="score"></p>
+    <p id="results-finished" class="finished-at"></p>
+    <ol id="results-review" class="review"></ol>
+    <button id="btn-play-again" class="btn btn-primary" type="button">Play again</button>
+  </section>
+
+  <section id="screen-error" class="screen" hidden>
+    <h2>Something went wrong</h2>
+    <p id="error-message" class="field-error"></p>
+  </section>
+</main>
+
+<footer class="page-foot">Happy Halloween 🕸️</footer>
+
+<script src="js/questions.js"></script>
+<script src="js/game-logic.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

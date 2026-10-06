@@ -1,0 +1,9 @@
+# Local-only artifacts — never publish
+.open-mem/
+.superpowers/
+
+# OS / editor junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp

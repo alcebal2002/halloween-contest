@@ -1,0 +1,220 @@
+# Halloween Contest — Design Spec
+
+**Date:** 2026-10-06
+**Status:** Approved design, pending spec review
+**Location:** `ai-games/halloween-contest/`
+
+## 1. Purpose
+
+A static HTML/CSS/JavaScript trivia game titled **"Halloween Contest"**. The user enters a
+nickname and answers a sequence of Halloween trivia questions, each with exactly three options.
+Progress is persisted to `localStorage` so closing and reopening the browser resumes the contest
+at the question the user left off. Scoring is explicit: each question has one correct answer.
+
+Success criteria:
+
+- Reopening the browser mid-contest restores nickname, question position, score, and answers.
+- The look and feel are Halloween-themed and dark.
+- Question content lives in one swappable file so real JSON data can replace the placeholder set
+  without touching application logic.
+
+## 2. Scope
+
+**In scope:** nickname capture, randomized question ordering, three-option questions, immediate
+per-question feedback, resume/welcome-back flow, results screen with answer review and replay,
+`localStorage` persistence, dark Halloween styling, pure-logic tests.
+
+**Out of scope:** server-side storage, leaderboards, authentication, sound, accounts, multiple
+questions types (all questions are three-option multiple choice with one correct answer), live
+score display during play.
+
+## 3. Screens and flow
+
+The UI is a single page with five screen sections. One of them is visible at a time, selected by
+`state.phase`.
+
+| Phase | Screen | Contents |
+|---|---|---|
+| `nickname` | Welcome | Title **"Halloween Contest"**, tagline, nickname input, **Start** button |
+| `welcomeBack` | Resume | "Welcome back, *nickname*", progress line ("Question 4 of 10", or "Finished" when the stored phase is `results`), **Continue** / **Start over**. **Continue** returns to the stored phase (`question`, `feedback`, or `results`) |
+| `question` | Quiz | Progress header, question text, three option buttons |
+| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green, verdict line ("Correct!" / "Not quite — correct answer: …"), **Next** button |
+| `results` | Summary | Nickname, score `X / M`, finish timestamp, full answer review, **Play again** |
+
+Transition rules:
+
+```
+nickname   --Start-->              question (index 0, fresh order)
+welcomeBack--Continue-->           the stored phase (question / feedback / results)
+welcomeBack--Start over-->         question (new sessionId, new order, score reset)
+question   --option clicked-->     feedback (record answer, update score, lastAnswerAt)
+feedback   --Next-->               question (index + 1)  |  results (if last question answered)
+results    --Play again-->         question (new sessionId, new order, score reset)
+```
+
+Notes:
+
+- **No live score counter during play.** Score is revealed only on the results screen.
+- **No auto-advance after feedback.** An explicit **Next** button prevents accidental skips.
+- Option buttons are disabled immediately after the first click (double-click safety).
+- The nickname form is submitted with the **Start** button or the Enter key.
+
+## 4. State schema
+
+Storage key: `halloweenContest.state.v1`
+
+```json
+{
+  "sessionId": "hc_550e8400-e29b-41d4-a716-446655440000",
+  "nickname": "Player1",
+  "phase": "question",
+  "questionIndex": 3,
+  "questionOrder": [7, 2, 11, 4, 9, 1, 12, 5, 8, 3],
+  "answers": [
+    { "questionId": 7, "selected": 1, "correct": true },
+    { "questionId": 2, "selected": 0, "correct": false }
+  ],
+  "score": 1,
+  "lastAnswerAt": "2026-10-06T14:52:11.000Z",
+  "finishedAt": null
+}
+```
+
+Field semantics:
+
+- `sessionId` — `hc_` prefix plus `crypto.randomUUID()`. Regenerated **only** on **Play again**
+  and **Start over**.
+- `nickname` — trimmed user input, 1–20 characters.
+- `phase` — one of `nickname`, `welcomeBack`, `question`, `feedback`, `results`.
+- `questionIndex` — 0-based index into `questionOrder`. During `question` and `feedback` it
+  identifies the question currently on screen (during `feedback` it still points at the
+  question just answered); advancing from `feedback` increments it by one.
+- `questionOrder` — array of question `id`s, shuffled once when a contest starts and persisted.
+  This is required: without it, resume would re-shuffle the deck and the user would face
+  different questions mid-contest.
+- `answers` — one entry per answered question, in answer order. Enables the results review.
+- `score` — count of `answers` where `correct` is true.
+- `lastAnswerAt` — ISO-8601 timestamp of the **most recent answer given, correct or not**.
+  Updated on every answer.
+- `finishedAt` — set equal to `lastAnswerAt` at the moment the final question is answered;
+  `null` until then. Displayed on the results screen as the moment the user finished the
+  questionnaire, formatted in the user's local time.
+
+The whole object is written with `localStorage.setItem` on **every** state transition, so
+nickname, position, score, and answers can never drift apart.
+
+Initial load: if no stored state exists (or it is unreadable), the app starts with a fresh
+object at `phase = "nickname"` with `score = 0`, `answers = []`, `lastAnswerAt = null`,
+`finishedAt = null`. If stored state exists with phase `question`, `feedback`, or `results`,
+the app opens on `welcomeBack` rather than the stored phase directly.
+
+## 5. Files
+
+```
+halloween-contest/
+├── index.html          semantic sections for the five screens; links css + 3 scripts
+├── css/
+│   └── style.css       theme tokens, layout, buttons, feedback colors, review list
+├── js/
+│   ├── questions.js    var QUESTIONS = [ … ]      ← the only file swapped for real data
+│   ├── game-logic.js   pure logic: validation, selection, state machine, storage I/O
+│   │                   (no DOM, no globals — loadable from Node and the browser)
+│   └── app.js          boot, render(), handlers, persistence; DOM-only side effects
+├── tests/
+│   ├── test-suite.js   shared assertions (UMD: runs under Node and the browser)
+│   ├── run-tests.js    Node runner          → node tests/run-tests.js
+│   ├── test.html       browser runner, opened directly
+│   ├── app-check.html  drives the real page in an iframe: the §8 checklist
+│   ├── layout-check.html  renders the page in a true 360px viewport and asserts no overflow
+│   └── boot-variants.html injects §7 boot faults (empty pool, blocked reads)
+└── docs/superpowers/specs/
+    └── 2026-10-06-halloween-contest-design.md
+```
+
+Scripts are plain, non-module, loaded in dependency order (`questions.js`, `game-logic.js`,
+`app.js`) at the end of `<body>`, so `QUESTIONS` and `GameLogic` are defined when `app.js`
+initialises and the page still runs from `file://`. No build step, no dependencies.
+
+### Question format
+
+```json
+{
+  "id": 3,
+  "text": "Which classic monster is owed a tooth by the Tooth Fairy?",
+  "options": ["Dracula", "Frankenstein's monster", "The Mummy"],
+  "correctIndex": 1
+}
+```
+
+Constraints enforced at selection time: exactly 3 options; `correctIndex` in `0..2`; non-empty
+`text`; unique numeric `id`. Invalid entries are skipped; if no valid question remains, the error
+screen in §7 is shown.
+
+### Placeholder data
+
+`questions.js` ships with roughly 15 Halloween trivia questions. Each contest draws **10**
+(shuffled) — or all valid questions if fewer than 10 exist. When the real JSON arrives it
+replaces the contents of this file in the same shape.
+
+## 6. Visual style
+
+Dark and atmospheric, centered card layout, max-width 640px, responsive down to phone widths.
+
+- **Palette**
+  - Background base `#0d0a14`, card surface `#14101c`, raised panel `#1c1726`
+  - Pumpkin orange `#ff7a1a` (primary actions, title glow)
+  - Deep purple `#7c3aed` (accents, borders)
+  - Blood red `#dc2626` (wrong answer), green `#16a34a` (correct answer)
+  - Bone white `#f5efe6` (body text), muted `#a89f91` (secondary text)
+- **Atmosphere:** subtle radial vignette / fog gradient over the background, soft orange glow
+  behind the card, a gentle flicker animation on the title, 🎃👻🦇 decorative accents.
+- **Typography:** serif display font (Creepster) for headings, humanist sans (Inter) for body
+  copy and controls — Google Fonts link with local fallback stacks (`Georgia` / system sans)
+  so the page still looks right offline (`file://`, no network).
+- **Components:** dark raised option buttons with orange hover/focus ring; visible keyboard
+  focus; feedback state colors paired with an icon (✓ / ✗) so color is not the only signal;
+  results review as a list of rows (question · your answer · verdict, plus the correct answer
+  on its own line when you were wrong).
+
+## 7. Error and edge handling
+
+| Case | Behaviour |
+|---|---|
+| Corrupt or missing stored JSON | Ignore it, start at the `nickname` phase |
+| `localStorage` unavailable (private mode) | Keep state in memory; show a banner: "Progress can't be saved in this browser." |
+| Stored `questionOrder` no longer matches loaded questions (data file swapped mid-contest) | Discard stale progress, return to `nickname` with the field pre-filled and the note "The question set changed — starting over." |
+| `QUESTIONS` missing, empty, or all entries invalid | Error screen with a readable message instead of a blank page |
+| User reloads during `feedback` | The answer and `phase = "feedback"` are persisted; after the welcome-back card, **Continue** restores the verdict and **Next** button exactly as before |
+| Empty nickname or longer than 20 chars | Inline validation message, no state change |
+| Double-click on an option | Buttons disabled on first click |
+| Answers with zero correct answers | Results screen still shows `lastAnswerAt` as the finish moment (no special case — `lastAnswerAt` tracks the latest answer regardless of correctness) |
+
+## 8. Testing
+
+No test tooling exists in this repo, so testing is split into:
+
+1. **`tests/test.html`** — plain browser assertions over the pure logic, with a pass/fail list
+   rendered on the page:
+   - shuffle produces a permutation and covers every valid question id
+   - seeded shuffle is deterministic (test uses a seeded RNG)
+   - state transition table (start, answer, next, finish, restart) produces the expected
+     `phase`, `questionIndex`, `score`, and `finishedAt`
+   - `lastAnswerAt` updates on every answer; `finishedAt` equals `lastAnswerAt` after the final
+     answer
+   - storage read/write round-trip, and fallback when `localStorage` throws
+   - question validation rejects bad entries (2 or 4 options, out-of-range `correctIndex`,
+     empty text, duplicate ids)
+2. **Manual checklist** (recorded in the implementation plan):
+   - reload on every phase restores the same screen and position
+   - **Start over** / **Play again** generate a new `sessionId` and reset score
+   - finish with 0 correct answers shows a finish timestamp
+   - corrupted stored state starts fresh without a console error
+   - keyboard-only navigation: Tab through options, Enter to submit the nickname
+   - narrow viewport (≈360px) does not overflow
+
+## 9. Approach
+
+Approach A — a screen-state machine with one persisted state object as the single source of
+truth; `render()` shows the screen matching `state.phase`. Rejected alternatives: independent
+`localStorage` keys per field (can drift apart across writes or tabs) and a minimal inline
+script (no separation, tangled DOM logic; conflicts with the split-file requirement).

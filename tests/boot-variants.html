@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Halloween Contest — boot variants</title>
+<style>
+  body { background: #0d0a14; color: #f5efe6; font-family: monospace; padding: 20px; }
+  .pass { color: #86efac; }
+  .fail { color: #fca5a5; }
+  pre { white-space: pre-wrap; }
+  iframe { width: 640px; height: 520px; border: 1px solid #7c3aed; }
+</style>
+</head>
+<body>
+<h1>Boot variants (spec §7)</h1>
+<p id="verdict">running…</p>
+<pre id="report"></pre>
+<iframe id="f" title="Halloween Contest under test"></iframe>
+
+<script>
+/* Loads the *real* index.html into a srcdoc iframe and injects a fault before
+   js/app.js runs, so each spec §7 boot failure can be exercised without
+   duplicating the page's markup (the copy would drift). Run with:
+     boot-variants.html?variant=emptypool
+     boot-variants.html?variant=getitem
+   Served over http only: it fetches index.html. */
+(function () {
+  var variant = (location.search.match(/variant=([a-z]+)/) || [])[1] || "emptypool";
+  var f = document.getElementById("f");
+  var verdict = document.getElementById("verdict");
+  var report = document.getElementById("report");
+
+  var STUBS = {
+    emptypool: '<script>window.QUESTIONS = [];<\/script>',
+    getitem: '<script>' +
+      'try {' +
+      '  Object.defineProperty(window, "localStorage", { configurable: true, value: {' +
+      '    getItem: function () { throw new Error("read blocked by test"); },' +
+      '    setItem: function () {},' +
+      '    removeItem: function () {}' +
+      '  }});' +
+      '} catch (e) { window.__stubFailed = e.message; }' +
+      '<\/script>'
+  };
+
+  var EXPECT = {
+    emptypool: [
+      ["error screen is shown", function (d) { return !d.getElementById("screen-error").hidden; }],
+      ["error message is readable and non-empty", function (d) {
+        return d.getElementById("error-message").textContent.trim().length > 20;
+      }],
+      ["no other screen is shown", function (d) {
+        return ["screen-nickname", "screen-question", "screen-feedback", "screen-results", "screen-welcome-back"]
+          .every(function (id) { return d.getElementById(id).hidden; });
+      }],
+      ["Start button is wired (screen responds)", function (d) {
+        d.getElementById("btn-start").click();
+        return d.getElementById("screen-error").hidden === false;
+      }]
+    ],
+    getitem: [
+      ["nickname screen is shown instead of a dead page", function (d) { return !d.getElementById("screen-nickname").hidden; }],
+      ["error screen stays hidden", function (d) { return d.getElementById("screen-error").hidden; }],
+      ["no storage banner (writes still work)", function (d) { return d.getElementById("storage-banner").hidden; }],
+      ["Start still starts a contest", function (d) {
+        d.getElementById("nickname").value = "Reader";
+        d.getElementById("btn-start").click();
+        return d.getElementById("screen-question").hidden === false;
+      }]
+    ]
+  };
+
+  fetch("../index.html")
+    .then(function (r) { return r.text(); })
+    .then(function (html) {
+      html = html
+        .replace(/href="css\//g, 'href="../css/')
+        .replace(/src="js\//g, 'src="../js/');
+      // Record any uncaught error from boot as JSON in document.title.
+      html = html.replace("</head>",
+        '<script>window.__errors = [];' +
+        'window.onerror = function (m) { window.__errors.push(String(m)); };<\/script>\n</head>');
+      html = html.replace('<script src="../js/app.js"><\/script>',
+        STUBS[variant] + '\n<script src="../js/app.js"><\/script>');
+
+      f.addEventListener("load", function () {
+        setTimeout(function () {
+          var results = [];
+          try {
+            var d = f.contentDocument;
+            var appOk = !!d.defaultView.HalloweenApp;
+            results.push(["app booted (HalloweenApp present)", appOk, ""]);
+            EXPECT[variant].forEach(function (pair) {
+              var ok = false, err = "";
+              try { ok = pair[1](d); } catch (e) { err = e.message; }
+              results.push([pair[0], ok, err]);
+            });
+            var errors = d.defaultView.__errors || [];
+            results.push(["no uncaught errors during boot", errors.length === 0, errors.join(" | ")]);
+          } catch (e) {
+            results.push(["harness could read the iframe", false, e.message]);
+          }
+
+          var failed = results.filter(function (r) { return !r[1]; });
+          verdict.textContent = variant + ": " + (results.length - failed.length) +
+            " passed, " + failed.length + " failed";
+          verdict.className = failed.length ? "fail" : "pass";
+          report.textContent = results.map(function (r) {
+            return (r[1] ? "PASS  " : "FAIL  ") + r[0] + (r[2] ? "  [" + r[2] + "]" : "");
+          }).join("\n");
+          document.title = "variants(" + variant + "): " + verdict.textContent;
+        }, 250);
+      });
+
+      f.srcdoc = html;
+    })
+    .catch(function (e) {
+      verdict.textContent = "HARNESS ERROR " + e.message;
+      verdict.className = "fail";
+      document.title = "variants: ERROR";
+    });
+})();
+</script>
+</body>
+</html>

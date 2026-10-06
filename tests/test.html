@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halloween Contest - Tests</title>
+<style>
+  body { background: #0d0a14; color: #f5efe6; font-family: "Segoe UI", system-ui, sans-serif; padding: 24px; }
+  h1 { color: #ff7a1a; font-weight: 400; }
+  .pass { color: #86efac; }
+  .fail { color: #fca5a5; }
+  li { margin: 6px 0; font-family: monospace; }
+  #summary { font-size: 20px; margin: 16px 0; }
+</style>
+</head>
+<body>
+<h1>Halloween Contest — test results</h1>
+<p id="summary">Running…</p>
+<ol id="results"></ol>
+<script src="../js/questions.js"></script>
+<script src="../js/game-logic.js"></script>
+<script src="test-suite.js"></script>
+<script>
+  (function () {
+    var list = document.getElementById("results");
+    var failed = 0;
+    TestSuite.tests.forEach(function (t) {
+      var li = document.createElement("li");
+      try {
+        t.fn();
+        li.className = "pass";
+        li.textContent = "PASS  " + t.name;
+      } catch (e) {
+        failed++;
+        li.className = "fail";
+        li.textContent = "FAIL  " + t.name + " — " + e.message;
+      }
+      list.appendChild(li);
+    });
+    document.getElementById("summary").textContent =
+      (TestSuite.tests.length - failed) + " passed, " + failed + " failed";
+    document.getElementById("summary").className = failed ? "fail" : "pass";
+    document.title = "tests: " + document.getElementById("summary").textContent;
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+:root {
+  --bg: #0d0a14;
+  --card: #14101c;
+  --panel: #1c1726;
+  --orange: #ff7a1a;
+  --purple: #7c3aed;
+  --red: #dc2626;
+  --green: #16a34a;
+  --bone: #f5efe6;
+  --muted: #a89f91;
+  --radius: 14px;
+  --serif: "Creepster", "Georgia", "Times New Roman", serif;
+  --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { min-height: 100%; }
+
+body {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(124, 58, 237, 0.28), transparent 60%),
+    radial-gradient(900px 500px at 50% 115%, rgba(255, 122, 26, 0.16), transparent 60%),
+    var(--bg);
+  color: var(--bone);
+  font-family: var(--sans);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 32px 16px;
+  min-height: 100vh;
+}
+
+.fog {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75) 100%);
+  z-index: 0;
+}
+
+.storage-banner {
+  position: relative;
+  z-index: 1;
+  background: rgba(220, 38, 38, 0.16);
+  border: 1px solid var(--red);
+  color: #fecaca;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  background: linear-gradient(180deg, var(--card), #100d17);
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  border-radius: var(--radius);
+  box-shadow: 0 0 60px rgba(255, 122, 26, 0.12), 0 24px 60px rgba(0, 0, 0, 0.6);
+  padding: 32px 28px 36px;
+}
+
+.masthead { text-align: center; margin-bottom: 26px; }
+.deco { display: block; font-size: 26px; letter-spacing: 6px; margin-bottom: 8px; }
+
+.title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(38px, 8vw, 58px);
+  letter-spacing: 2px;
+  color: var(--orange);
+  text-shadow: 0 0 18px rgba(255, 122, 26, 0.55), 0 0 44px rgba(255, 122, 26, 0.25);
+  animation: flicker 5s infinite;
+}
+
+.tagline { color: var(--muted); margin-top: 6px; font-size: 15px; }
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  47% { opacity: 1; }
+  48% { opacity: 0.72; }
+  49% { opacity: 1; }
+  71% { opacity: 0.85; }
+  72% { opacity: 1; }
+}
+
+.screen { animation: rise 0.25s ease-out; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(22px, 4.5vw, 30px);
+  line-height: 1.35;
+  margin: 14px 0 20px;
+  color: var(--bone);
+}
+
+.progress {
+  color: var(--orange);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.field { margin-bottom: 20px; }
+.field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+
+.field input {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid rgba(168, 159, 145, 0.35);
+  border-radius: 10px;
+  color: var(--bone);
+  font-size: 18px;
+  padding: 13px 14px;
+  outline: none;
+}
+.field input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.25); }
+
+.field-error { color: #fca5a5; font-size: 14px; margin-top: 8px; }
+.field-note { color: var(--muted); font-size: 14px; margin-top: 8px; font-style: italic; }
+
+.options { display: flex; flex-direction: column; gap: 12px; }
+
+.btn {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.btn:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+.btn-primary { background: var(--orange); color: #1a0f04; width: 100%; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255, 122, 26, 0.35); }
+.btn-ghost { background: transparent; color: var(--muted); border-color: rgba(168, 159, 145, 0.4); }
+.btn-ghost:hover { color: var(--bone); border-color: var(--bone); }
+.actions { display: flex; flex-direction: column; gap: 10px; }
+
+.option {
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  color: var(--bone);
+  border-radius: 10px;
+  padding: 15px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+}
+.option:hover:not(:disabled) { border-color: var(--orange); background: #221b30; transform: translateY(-1px); }
+.option:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+.option:disabled { cursor: default; opacity: 1; }
+.option .mark { font-weight: 700; width: 20px; text-align: center; }
+.option.is-correct { border-color: var(--green); background: rgba(22, 163, 74, 0.18); }
+.option.is-wrong { border-color: var(--red); background: rgba(220, 38, 38, 0.18); }
+.option.is-muted { opacity: 0.5; }
+
+.verdict { margin: 18px 0; font-size: 16px; font-weight: 600; min-height: 22px; }
+.verdict.is-correct { color: #86efac; }
+.verdict.is-wrong { color: #fca5a5; }
+
+.score { font-size: clamp(34px, 9vw, 52px); font-family: var(--serif); color: var(--orange); margin: 6px 0; }
+.finished-at { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+
+.review { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+.review li {
+  background: var(--panel);
+  border: 1px solid rgba(168, 159, 145, 0.2);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+.review li.ok { border-left-color: var(--green); }
+.review li.bad { border-left-color: var(--red); }
+.review .q { font-weight: 600; margin-bottom: 6px; }
+.review .a { color: var(--muted); }
+.review .a b { color: var(--bone); font-weight: 600; }
+.review .verdict-tag { float: right; font-weight: 700; }
+.review li.ok .verdict-tag { color: #86efac; }
+.review li.bad .verdict-tag { color: #fca5a5; }
+
+.page-foot { position: relative; z-index: 1; color: var(--muted); font-size: 13px; }
+
+@media (min-width: 560px) {
+  .actions { flex-direction: row; }
+  .actions .btn { width: auto; flex: 1; }
+  .btn-primary { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title { animation: none; }
+  .screen { animation: none; }
+  .btn, .option { transition: none; }
+}

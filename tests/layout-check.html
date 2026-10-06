@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Halloween Contest — 360px layout check</title>
+<style>
+  body { background: #0d0a14; color: #f5efe6; font-family: monospace; padding: 20px; }
+  .pass { color: #86efac; }
+  .fail { color: #fca5a5; }
+  iframe { width: 360px; height: 640px; border: 1px solid #7c3aed; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>360px layout check</h1>
+<p id="verdict">running…</p>
+<pre id="report"></pre>
+<iframe id="f" src="../index.html" title="Halloween Contest at 360px"></iframe>
+
+<script>
+/* Verifies the game renders without horizontal overflow inside a true 360px
+   viewport. (Edge headless cannot be windowed below ~492px, so --window-size
+   screenshots of 360 are left-crops of a wider layout; this iframe is not.) */
+setTimeout(function () {
+  var verdict = document.getElementById("verdict");
+  var report = document.getElementById("report");
+  try {
+    var d = document.getElementById("f").contentDocument;
+    var card = d.querySelector(".card");
+    var title = d.querySelector(".title");
+    var offenders = [];
+    d.querySelectorAll("body *").forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.right > 360.5) {
+        offenders.push(el.tagName + (el.id ? "#" + el.id : "") + " right=" + Math.round(r.right));
+      }
+    });
+
+    var checks = [
+      ["viewport is 360px wide", d.documentElement.clientWidth === 360, d.documentElement.clientWidth],
+      ["document does not scroll horizontally", d.documentElement.scrollWidth <= 360, d.documentElement.scrollWidth],
+      ["card fits inside the viewport", card.getBoundingClientRect().right <= 360, Math.round(card.getBoundingClientRect().right)],
+      ["title fits inside the card", title.scrollWidth <= title.clientWidth, title.scrollWidth + "/" + title.clientWidth],
+      ["nickname screen is visible", !d.getElementById("screen-nickname").hidden, d.getElementById("screen-nickname").hidden],
+      ["other screens are hidden", ["screen-question", "screen-feedback", "screen-results", "screen-welcome-back", "screen-error"].every(function (id) { return d.getElementById(id).hidden; }), "see html"],
+      ["page title is correct", d.title === "Halloween Contest", d.title],
+      ["no elements overflow right", offenders.length === 0, offenders.join(", ")]
+    ];
+
+    var failed = checks.filter(function (c) { return !c[1]; });
+    verdict.textContent = (checks.length - failed.length) + " passed, " + failed.length + " failed";
+    verdict.className = failed.length ? "fail" : "pass";
+    report.textContent = checks.map(function (c) {
+      return (c[1] ? "PASS  " : "FAIL  ") + c[0] + "  [" + c[2] + "]";
+    }).join("\n");
+    document.title = "layout check: " + verdict.textContent;
+  } catch (e) {
+    verdict.textContent = "ERROR " + e.message;
+    verdict.className = "fail";
+  }
+}, 900);
+</script>
+</body>
+</html>
