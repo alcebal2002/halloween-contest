@@ -36,7 +36,7 @@ The UI is a single page with five screen sections. One of them is visible at a t
 | Phase | Screen | Contents |
 |---|---|---|
 | `nickname` | Welcome | Title **"Halloween Contest"**, tagline, nickname input, **Start** button |
-| `welcomeBack` | Resume | "Welcome back, *nickname*", progress line ("Question 4 of 10", or "Finished" when the stored phase is `results`), **Continue** / **Start over**. **Continue** returns to the stored phase (`question`, `feedback`, or `results`) |
+| `welcomeBack` | Resume | "Welcome back, *nickname*", progress line ("Question 4 of 10", or "Finished - score X / M" when the stored phase is `results`). In that finished case the card also shows the run's elapsed time and finish time, then a blank gap, then **Continue** / **Start over**. **Continue** returns to the stored phase (`question`, `feedback`, or `results`) |
 | `question` | Quiz | Progress header, question text, three option buttons |
 | `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green, verdict line ("Correct!" / "Not quite — correct answer: …"), **Next** button |
 | `results` | Summary | Nickname, score `X / M`, finish timestamp, full answer review, **Play again** |

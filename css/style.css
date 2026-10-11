@@ -375,6 +375,13 @@ h2 {
 .elapsed { color: var(--bone); font-size: 15px; font-weight: 600; margin-bottom: 4px; }
 .finished-at { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
 
+/* Resume card: when the stored phase is `results` the card also shows how long the
+   run took and when it ended, with a clear gap before the Continue / Start over
+   buttons so they sit on their own line below the score and times (spec §3). */
+.welcome-summary { margin-top: 10px; }
+.welcome-summary .finished-at { margin-bottom: 0; }
+#screen-welcome-back .actions { margin-top: 24px; }
+
 .review { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
 .review li {
   background: var(--panel);

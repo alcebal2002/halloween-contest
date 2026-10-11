@@ -150,10 +150,12 @@
     step("1a. reload during feedback shows the welcome-back card with progress", function () {
       var name = $("welcome-back-name").textContent;
       var prog = $("welcome-back-progress").textContent;
+      var noSummary = $("welcome-back-summary").hidden === true;
       rec("1a. reload during feedback shows the welcome-back card with progress",
         app().getView() === "welcomeBack" && name === "Welcome back, Bat" && prog === "Question 1 of 10" &&
-          $("hud").hidden,
-        "view=" + app().getView() + " name=" + name + " progress=" + prog + " hudHidden=" + $("hud").hidden);
+          noSummary && $("hud").hidden,
+        "view=" + app().getView() + " name=" + name + " progress=" + prog +
+          " summaryHidden=" + noSummary + " hudHidden=" + $("hud").hidden);
     });
 
     step("1b. Continue restores the verdict and Next button, score unchanged", function () {
@@ -465,13 +467,18 @@
 
     /* ---- 8b. resume on the results phase (spec §3: Continue returns to results) ---- */
     await reload();
-    step("8b. reload after finishing: welcome-back says Finished, Continue returns to results", function () {
+    step("8b. reload after finishing: welcome-back says Finished, shows the time, Continue returns to results", function () {
       var prog = $("welcome-back-progress").textContent;
+      var summaryShown = $("welcome-back-summary").hidden === false;
+      var time = $("welcome-back-time").textContent;
+      var fin = $("welcome-back-finished").textContent;
       click($("btn-continue"));
-      rec("8b. reload after finishing: welcome-back says Finished, Continue returns to results",
-        prog.indexOf("Finished - score 0 / 50") === 0 && app().getView() === "results" &&
-          $("results-score").textContent === "0 / 50",
-        "card said '" + prog + "' → view=" + app().getView() + " score=" + $("results-score").textContent);
+      rec("8b. reload after finishing: the card shows the final score with the elapsed and finish time",
+        prog.indexOf("Finished - score 0 / 50") === 0 && summaryShown &&
+          time.indexOf("Total time: ") === 0 && fin.indexOf("Finished at") === 0 &&
+          app().getView() === "results" && $("results-score").textContent === "0 / 50",
+        "card said '" + prog + "' summaryShown=" + summaryShown + " time='" + time + "' finished='" + fin +
+          "' → view=" + app().getView() + " score=" + $("results-score").textContent);
     });
 
     /* ---- 3. play again ---- */

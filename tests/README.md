@@ -42,7 +42,8 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
   and three misses settling at 1), the neon match highlight and its reset in the following
   round, the green flash on a partial match (locked controls, then empty slots for the next
   attempt), the reload that starts that round from empty slots, resume from the welcome-back
-  card in all phases, start over,
+  card in all phases (progress mid-game; final score plus elapsed and finish time once finished),
+  start over,
   swapped/corrupt data, keyboard start, and the results screen
   (points, total time, timestamp, 10 review rows).
 - **`layout-check.html`** — renders the page in a genuine 360px viewport and walks the whole

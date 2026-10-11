@@ -85,6 +85,9 @@
       ready: $("btn-ready"),
       welcomeName: $("welcome-back-name"),
       welcomeProgress: $("welcome-back-progress"),
+      welcomeSummary: $("welcome-back-summary"),
+      welcomeTime: $("welcome-back-time"),
+      welcomeFinished: $("welcome-back-finished"),
       continueBtn: $("btn-continue"),
       startOver: $("btn-start-over"),
       qProgress: $("question-progress"),
@@ -387,10 +390,20 @@
 
     if (view === "welcomeBack") {
       var maxPoints = questions.length * GameLogic.MAX_POINTS_PER_QUESTION;
+      var finished = pendingPhase === "results";
       el.welcomeName.textContent = "Welcome back, " + state.nickname;
-      el.welcomeProgress.textContent = (pendingPhase === "results")
+      el.welcomeProgress.textContent = finished
         ? "Finished - score " + state.score + " / " + maxPoints
         : "Question " + (state.questionIndex + 1) + " of " + questions.length;
+      // A stored results phase also shows how long the run took and when it ended,
+      // mirroring the results screen (spec §3); the line above already carries the score.
+      el.welcomeSummary.hidden = !finished;
+      if (finished) {
+        el.welcomeTime.textContent = "Total time: " + (GameLogic.formatDuration(state.elapsedMs) || "0s");
+        el.welcomeFinished.textContent = GameLogic.formatTimestamp(state.finishedAt)
+          ? "Finished at " + GameLogic.formatTimestamp(state.finishedAt)
+          : "";
+      }
       $("screen-welcome-back").hidden = false;
       return;
     }
