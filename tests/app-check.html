@@ -181,6 +181,22 @@
           "' checkDisabled=" + $("btn-bonus-check").disabled + " hud='" + hud() + "'");
     });
 
+    step("2a. the tray shows four Halloween characters on distinct coloured tiles", function () {
+      var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
+      var labels = Array.prototype.map.call(arts, function (a) {
+        return a.parentNode.querySelector(".bottle-label").textContent;
+      });
+      var glyphs = Array.prototype.map.call(arts, function (a) { return a.getAttribute("data-glyph"); });
+      var bgs = Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).backgroundColor; });
+      var distinct = {}; bgs.forEach(function (c) { distinct[c] = true; });
+      var glyphSet = {}; glyphs.forEach(function (g) { glyphSet[g] = true; });
+      var allOpaque = bgs.every(function (c) { return c !== "rgba(0, 0, 0, 0)" && c !== "transparent"; });
+      rec("2a. the tray shows four Halloween characters on distinct coloured tiles",
+        arts.length === 4 && labels.join(",") === "Spider,Pumpkin,Ghost,Bat" &&
+          Object.keys(glyphSet).length === 4 && Object.keys(distinct).length === 4 && allOpaque,
+        "labels=" + labels.join("/") + " glyphs=" + glyphs.join("/") + " backgrounds=" + bgs.join(" | "));
+    });
+
     step("2c. Check stays disabled until all four bottles are picked", function () {
       var target = app().getState().bonus.target;
       click(bottles()[target[0]]);
@@ -193,6 +209,23 @@
       rec("2c. Check stays disabled until all four bottles are picked",
         half === true && slotsFilled === 3 && full === false && bottles()[target[3]].className.indexOf("is-picked") > -1,
         "afterThreeDisabled=" + half + " slots=" + slotsFilled + " afterFourDisabled=" + full);
+    });
+
+    step("2c2. each filled slot shows the same character as its tray tile", function () {
+      var target = app().getState().bonus.target;
+      var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
+      var slots = $("bonus-slots").querySelectorAll(".slot");
+      var mismatched = 0, detail = "";
+      for (var i = 0; i < slots.length; i++) {
+        var tray = arts[target[i]].getAttribute("data-glyph");
+        var inSlot = slots[i].querySelector(".slot-glyph").textContent;
+        if (tray !== inSlot) mismatched++;
+        detail += (i + 1) + ":" + inSlot + " ";
+      }
+      rec("2c2. each filled slot shows the same character as its tray tile",
+        slots.length === 4 && $("bonus-slots").querySelectorAll(".slot.is-filled").length === 4 &&
+          mismatched === 0,
+        "mismatched=" + mismatched + " slots=" + detail);
     });
 
     step("2d. matching the order on the first attempt pays 5 points", function () {

@@ -8,7 +8,7 @@ manual one.
 | --- | --- | --- |
 | `node tests/run-tests.js` | Node ≥ 14, from the project root | `56 passed, 0 failed`, exit code `0` |
 | `tests/test.html` | open directly (`file://`) or serve the folder | `56 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `29 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `31 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `36 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
 | `tests/boot-variants.html?variant=getitem` | serve the folder, open `/tests/boot-variants.html?variant=getitem` | `7 passed, 0 failed` |
@@ -37,8 +37,9 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
   recorded order). If these two ever disagree, a UMD guard in `js/game-logic.js` or
   `js/questions.js` has broken.
 - **`app-check.html`** — drives the real `index.html` in an iframe: nickname validation, the
-  instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), immediate
-  feedback, the bonus round (open → pick four bottles → first-attempt match pays 5 → Next,
+  instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
+  four-character tray on distinct colours, immediate
+  feedback, the bonus round (open → pick four characters → first-attempt match pays 5 → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following
   round, the green flash on a partial match (locked controls, then empty slots for the next
   attempt), the reload that starts that round from empty slots, resume from the welcome-back
@@ -47,7 +48,7 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
   swapped/corrupt data, keyboard start, and the results screen
   (points, total time, timestamp, 10 review rows).
 - **`layout-check.html`** — renders the page in a genuine 360px viewport and walks the whole
-  flow (nickname → instructions → question → feedback → bonus with two bottles picked → bonus
+  flow (nickname → instructions → question → feedback → bonus with two characters picked → bonus
   resolved → results), asserting at every stop that the document does not scroll sideways, the
   card fits, and no element overflows. It also checks the score bar is hidden before the
   contest starts and that each step shows exactly one screen. (Edge/Chrome headless cannot be

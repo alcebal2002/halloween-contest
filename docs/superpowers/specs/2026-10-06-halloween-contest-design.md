@@ -239,7 +239,7 @@ the current contract wherever the two disagree.
 
 | Outcome | Points for the question |
 |---|---|
-| Correct, matched the bottle order on the 1st attempt | **5** |
+| Correct, matched the character order on the 1st attempt | **5** |
 | Correct, matched on the 2nd attempt | **3** |
 | Correct, matched on the 3rd attempt | **2** |
 | Correct, no match after 3 attempts | **1** |
@@ -251,29 +251,30 @@ time and the resolved bonus adds the remainder (4 / 2 / 1 / 0), so `score` is al
 
 ### 10.3 Bonus round interaction
 
-Four bottles — toxic green ☠, deep purple ⚗, blood red ☣, cyanide cyan ⚱ (colour is never the only signal).
-The player clicks bottles to build an order left to right, **Check order** compares it with the
+Four Halloween characters on the tray — spider 🕷️, pumpkin 🎃, ghost 👻 and bat 🦇 — each on its
+own background colour, with the caption naming it (colour is never the only signal).
+The player clicks characters to build an order left to right, **Check order** compares it with the
 hidden permutation, **Clear** resets the picks. A miss leaves the round open with one attempt
 consumed; the round settles on a match or on the third miss, then the summary replaces the
 controls and **Next** continues. The hidden order is shown once the round settles.
 
 On a match, each of the four filled slots is ringed in neon green (`--neon`, `#39ff14`) with a
 soft glow that pulses (the pulse is disabled under `prefers-reduced-motion`), so the player can
-see that every position matched. Only the **border** (and its glow) changes — the bottle inside
+see that every position matched. Only the **border** (and its glow) changes — the character inside
 keeps its own colour and fill. The highlight is derived from `bonus.matched` at render time,
 not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
-the bottles selectable again. A settled miss never lights the slots.
+the characters selectable again. A settled miss never lights the slots.
 
 Every check empties the slots again — the order is kept only on a match. When a check leaves at
-least one bottle in the right position but does not solve the order, those borders flash neon
+least one character in the right position but does not solve the order, those borders flash neon
 green for two seconds (four quick blinks; a steady border of the same colour under
 `prefers-reduced-motion`) and the round then clears the boxes for the next attempt, with the
-bottles and the controls locked while the flash is on screen. Only the border blinks; the bottle
+characters and the controls locked while the flash is on screen. Only the border blinks; the character
 inside is untouched. A check that gets nothing right clears at
 once. The flash is derived from `bonus.tried`, the order submitted on the last check (an optional
 stored field), never from the live selection; leaving or reloading the round drops it, so a
 mid-round reload starts from empty slots with the attempts already spent. With four distinct
-bottles the number of positions that can match is 0, 1, 2 or 4 (never 3), so a partial result
+characters the number of positions that can match is 0, 1, 2 or 4 (never 3), so a partial result
 flashes one or two slots.
 
 ### 10.4 Score bar

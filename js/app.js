@@ -15,8 +15,9 @@
   var note = "";                // "question set changed" note
   var el = {};
 
-  var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623", "\u26b1"];   // matches the bottles in index.html
-  var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red", "Cyanide cyan"];
+  // Spider, pumpkin, ghost, bat — same order as the tiles in index.html.
+  var BOTTLE_GLYPHS = ["\uD83D\uDD77\uFE0F", "\uD83C\uDF83", "\uD83D\uDC7B", "\uD83E\uDD87"];
+  var BOTTLE_NAMES = ["Spider", "Pumpkin", "Ghost", "Bat"];
   var SLOT_LABELS = ["1st", "2nd", "3rd", "4th"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
 
