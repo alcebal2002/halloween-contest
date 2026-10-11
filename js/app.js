@@ -312,12 +312,14 @@
   }
 
   // Always renders every slot, filling the ones the player has already picked.
-  function slotMarkup(indices, size) {
+  // When the checked order matched, every slot is flagged so CSS lights it up.
+  function slotMarkup(indices, size, matched) {
     var markup = "";
     for (var i = 0; i < size; i++) {
       var bottle = indices[i];
       var filled = typeof bottle === "number";
-      var cls = "slot" + (filled ? " is-filled slot-" + bottle : "");
+      var cls = "slot" + (filled ? " is-filled slot-" + bottle : "") +
+        (matched && filled ? " is-matched" : "");
       markup += '<li class="' + cls + '">' +
         '<span class="slot-pos" aria-hidden="true">' + SLOT_LABELS[i] + "</span>" +
         '<span class="slot-glyph"' + (filled ? "" : ' aria-hidden="true"') + ">" +
@@ -439,7 +441,7 @@
       ? "Attempts used: <b>" + bonus.attemptsUsed + "</b> of " + GameLogic.BONUS_MAX_ATTEMPTS
       : "Attempts left: <b>" + (GameLogic.BONUS_MAX_ATTEMPTS - bonus.attemptsUsed) + "</b>";
 
-    el.bonusSlots.innerHTML = slotMarkup(indices, size);
+    el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched);
 
     if (bonus.resolved) {
       el.bonusVerdict.className = "verdict " + (bonus.matched ? "is-correct" : "is-warn");

@@ -205,6 +205,25 @@
           "' hud='" + hud() + "'");
     });
 
+    step("2d2. a match lights up all three order slots in neon green", function () {
+      var slots = $("bonus-slots").querySelectorAll(".slot");
+      var matched = $("bonus-slots").querySelectorAll(".slot.is-matched");
+      var glowing = 0, pulsing = 0, green = false;
+      Array.prototype.forEach.call(matched, function (s) {
+        var cs = W().getComputedStyle(s);
+        if (cs.boxShadow !== "none") glowing++;
+        if (cs.animationName.indexOf("pulse") > -1) pulsing++;
+        var rgb = cs.borderTopColor.match(/\d+/g);
+        if (rgb && +rgb[1] > 180 && +rgb[0] < 120 && +rgb[2] < 120) green = true;
+      });
+      var reduced = W().matchMedia("(prefers-reduced-motion: reduce)").matches;
+      rec("2d2. a match lights up all three order slots in neon green",
+        slots.length === 3 && matched.length === 3 && glowing === 3 && green &&
+          (reduced || pulsing === 3),
+        "slots=" + slots.length + " matched=" + matched.length + " glowing=" + glowing +
+          " pulsing=" + pulsing + " green=" + green + " reducedMotion=" + reduced);
+    });
+
     step("2e. the bonus Next button advances to question 2", function () {
       click($("btn-bonus-next"));
       rec("2e. the bonus Next button advances to question 2",
@@ -236,6 +255,17 @@
         "view=" + app().getView() + " attempts=" + (s2.bonus && s2.bonus.attemptsUsed) + " hud='" + hud() + "'");
     });
 
+    step("f1b. the next round starts un-highlighted with the bottles selectable again", function () {
+      var matched = $("bonus-slots").querySelectorAll(".slot.is-matched").length;
+      var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
+      var enabled = 0;
+      Array.prototype.forEach.call(bottles(), function (b) { if (!b.disabled) enabled++; });
+      rec("f1b. the next round starts un-highlighted with the bottles selectable again",
+        matched === 0 && filled === 0 && enabled === 3 && $("btn-bonus-check").disabled === true,
+        "matched=" + matched + " filled=" + filled + " clickableBottles=" + enabled +
+          " checkDisabled=" + $("btn-bonus-check").disabled);
+    });
+
     step("f2. a miss leaves the bonus open with one attempt used", function () {
       pick(missOrder());
       var st = app().getState();
@@ -262,6 +292,14 @@
         "stillOpen=" + stillOpen + " verdictBefore='" + verdictBefore + "' attempts=" + done.bonus.attemptsUsed +
           " points=" + done.answers[1].points + " score=" + done.score +
           " verdict='" + $("bonus-verdict").textContent + "'");
+    });
+
+    step("f3b. three misses fill the slots with the order but never light them up", function () {
+      var matched = $("bonus-slots").querySelectorAll(".slot.is-matched").length;
+      var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
+      rec("f3b. three misses fill the slots with the order but never light them up",
+        filled === 3 && matched === 0 && app().getState().bonus.matched === false,
+        "filled=" + filled + " matched=" + matched);
     });
 
     step("f4. the bonus Next button carries on to question 3", function () {

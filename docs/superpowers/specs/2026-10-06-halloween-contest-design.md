@@ -257,6 +257,12 @@ hidden permutation, **Clear** resets the picks. A miss leaves the round open wit
 consumed; the round settles on a match or on the third miss, then the summary replaces the
 controls and **Next** continues. The hidden order is shown once the round settles.
 
+On a match, each of the three filled slots is ringed in neon green (`--neon`, `#39ff14`) with a
+soft glow that pulses (the pulse is disabled under `prefers-reduced-motion`), so the player can
+see that every position matched. The highlight is derived from `bonus.matched` at render time,
+not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
+the bottles selectable again. A settled miss never lights the slots.
+
 ### 10.4 Score bar
 
 `#hud` sits at the top of the card from the instructions screen through to the results, and is
@@ -285,7 +291,7 @@ the recorded points.
 
 `tests/test-suite.js` (Node and browser, 51 assertions) covers the points table, bonus
 validation, elapsed-time accumulation and the gap cap, plus everything in §8.
-`tests/app-check.html` (24 checks) drives the real page through instructions, HUD, both bonus
-outcomes, resume from every phase, and the results screen. `tests/layout-check.html` (36
+`tests/app-check.html` (27 checks) drives the real page through instructions, HUD, both bonus
+outcomes (including the neon match highlight and its reset on the next round), resume from every phase, and the results screen. `tests/layout-check.html` (36
 checks) repeats the 360px overflow assertion at every step of the flow.
 `tests/make-nostorage.js` regenerates the `localStorage`-blocked copy of `index.html`.
