@@ -323,36 +323,38 @@ h2 {
 .slot-1 { --liquid: #a855f7; --liquid-soft: rgba(168, 85, 247, 0.18); }
 .slot-2 { --liquid: #ef4444; --liquid-soft: rgba(239, 68, 68, 0.18); }
 
-/* Positions the last check got right (spec §10.3): the box flashes neon green for
-   a moment before the order is cleared, so the player learns which position was
-   right without being able to keep the rest. Declared before .slot.is-matched. */
+/* Positions the last check got right (spec §10.3): the box border flashes neon
+   green for a moment before the order is cleared, so the player learns which
+   position was right without being able to keep the rest. Only the border (and
+   its glow) blinks — the bottle inside keeps its own colour and fill. Declared
+   before .slot.is-matched. */
 .slot.is-correct-pos {
   border-style: solid;
   border-color: var(--neon);
-  background: rgba(57, 255, 20, 0.14);
   box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.5), 0 0 10px rgba(57, 255, 20, 0.45);
   animation: slot-blink 0.5s ease-in-out 4;
 }
-.slot.is-correct-pos .slot-pos,
-.slot.is-correct-pos .slot-glyph { color: var(--neon); }
 
 @keyframes slot-blink {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.2; }
+  0%, 100% {
+    border-color: var(--neon);
+    box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.5), 0 0 10px rgba(57, 255, 20, 0.45);
+  }
+  50% {
+    border-color: rgba(57, 255, 20, 0.12);
+    box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.08), 0 0 4px rgba(57, 255, 20, 0.05);
+  }
 }
 
-/* A matched order lights every slot up in neon green (spec §10.3). Declared after
-   .slot.is-filled so the neon border wins over the bottle colour, and animated so
-   the glow breathes until the player moves on. */
+/* A matched order marks every slot with a neon green border (spec §10.3). Declared
+   after .slot.is-filled so the neon border wins over the bottle colour. Only the
+   border and its glow change — the bottle keeps its own colour — and the glow
+   breathes until the player moves on. */
 .slot.is-matched {
   border-color: var(--neon);
-  background: rgba(57, 255, 20, 0.14);
-  color: var(--neon);
   box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.55), 0 0 14px rgba(57, 255, 20, 0.55);
   animation: slot-pulse 1.6s ease-in-out infinite;
 }
-.slot.is-matched .slot-pos,
-.slot.is-matched .slot-glyph { color: var(--neon); }
 
 @keyframes slot-pulse {
   0%, 100% { box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.55), 0 0 10px rgba(57, 255, 20, 0.35); }

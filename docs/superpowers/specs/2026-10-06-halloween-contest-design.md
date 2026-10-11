@@ -259,15 +259,17 @@ controls and **Next** continues. The hidden order is shown once the round settle
 
 On a match, each of the three filled slots is ringed in neon green (`--neon`, `#39ff14`) with a
 soft glow that pulses (the pulse is disabled under `prefers-reduced-motion`), so the player can
-see that every position matched. The highlight is derived from `bonus.matched` at render time,
+see that every position matched. Only the **border** (and its glow) changes — the bottle inside
+keeps its own colour and fill. The highlight is derived from `bonus.matched` at render time,
 not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
 the bottles selectable again. A settled miss never lights the slots.
 
 Every check empties the slots again — the order is kept only on a match. When a check leaves at
-least one bottle in the right position but does not solve the order, those slots flash neon green
-for two seconds (four quick blinks; a steady ring of the same colour under
-`prefers-reduced-motion`) and the round then clears them for the next attempt, with the bottles
-and the controls locked while the flash is on screen. A check that gets nothing right clears at
+least one bottle in the right position but does not solve the order, those borders flash neon
+green for two seconds (four quick blinks; a steady border of the same colour under
+`prefers-reduced-motion`) and the round then clears the boxes for the next attempt, with the
+bottles and the controls locked while the flash is on screen. Only the border blinks; the bottle
+inside is untouched. A check that gets nothing right clears at
 once. The flash is derived from `bonus.tried`, the order submitted on the last check (an optional
 stored field), never from the live selection; leaving or reloading the round drops it, so a
 mid-round reload starts from empty slots with the attempts already spent. With three distinct

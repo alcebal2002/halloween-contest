@@ -206,23 +206,27 @@
           "' hud='" + hud() + "'");
     });
 
-    step("2d2. a match lights up all three order slots in neon green", function () {
+    step("2d2. a match rings all three order slots in neon green (border only)", function () {
       var slots = $("bonus-slots").querySelectorAll(".slot");
       var matched = $("bonus-slots").querySelectorAll(".slot.is-matched");
-      var glowing = 0, pulsing = 0, green = false;
+      var glowing = 0, pulsing = 0, green = false, borderOnly = 0;
       Array.prototype.forEach.call(matched, function (s) {
         var cs = W().getComputedStyle(s);
         if (cs.boxShadow !== "none") glowing++;
         if (cs.animationName.indexOf("pulse") > -1) pulsing++;
         var rgb = cs.borderTopColor.match(/\d+/g);
         if (rgb && +rgb[1] > 180 && +rgb[0] < 120 && +rgb[2] < 120) green = true;
+        // The bottle inside keeps its own colour and fill — only the border is neon.
+        var glyphColor = W().getComputedStyle(s.querySelector(".slot-glyph")).color;
+        if (glyphColor !== "rgb(57, 255, 20)" && cs.backgroundColor !== "rgba(57, 255, 20, 0.14)") borderOnly++;
       });
       var reduced = W().matchMedia("(prefers-reduced-motion: reduce)").matches;
-      rec("2d2. a match lights up all three order slots in neon green",
-        slots.length === 3 && matched.length === 3 && glowing === 3 && green &&
+      rec("2d2. a match rings all three order slots in neon green (border only)",
+        slots.length === 3 && matched.length === 3 && glowing === 3 && green && borderOnly === 3 &&
           (reduced || pulsing === 3),
         "slots=" + slots.length + " matched=" + matched.length + " glowing=" + glowing +
-          " pulsing=" + pulsing + " green=" + green + " reducedMotion=" + reduced);
+          " pulsing=" + pulsing + " green=" + green + " borderOnly=" + borderOnly +
+          " reducedMotion=" + reduced);
     });
 
     step("2e. the bonus Next button advances to question 2", function () {
@@ -285,6 +289,10 @@
       var glowing = !!cs && !!rgb && +rgb[1] > 180 && +rgb[0] < 120 && +rgb[2] < 120 &&
         (reduced ? cs.animationName === "none" : cs.animationName.indexOf("blink") > -1);
       var wrongBare = slots[1] ? W().getComputedStyle(slots[1]).boxShadow === "none" : false;
+      // The blink is on the border only — the bottle inside keeps its colour.
+      var contentBare = !!ring &&
+        W().getComputedStyle(ring.querySelector(".slot-glyph")).color !== "rgb(57, 255, 20)" &&
+        cs.backgroundColor !== "rgba(57, 255, 20, 0.14)";
       var locked = Array.prototype.every.call(bottles(), function (b) { return b.disabled; });
       rec("f2. a partial match blinks the right position green and freezes the round",
         st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && st.score === 6 &&
@@ -292,10 +300,11 @@
           $("bonus-verdict").textContent === "No match - try again." &&
           $("bonus-attempts").textContent.indexOf("2") > -1 &&
           filled === 3 && rings === 1 && matched === 0 && ring === slots[0] && glowing && wrongBare &&
-          locked && $("btn-bonus-check").disabled === true && $("btn-bonus-reset").disabled === true,
+          contentBare && locked &&
+          $("btn-bonus-check").disabled === true && $("btn-bonus-reset").disabled === true,
         "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed + " score=" + st.score +
           " filled=" + filled + " rings=" + rings + " matched=" + matched + " ringIsFirst=" + (ring === slots[0]) +
-          " glowing=" + glowing + " wrongBare=" + wrongBare + " locked=" + locked +
+          " glowing=" + glowing + " wrongBare=" + wrongBare + " contentBare=" + contentBare + " locked=" + locked +
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
