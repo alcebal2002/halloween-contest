@@ -10,12 +10,15 @@
   var pendingPhase = null;      // stored phase to restore via Continue
   var lastFeedback = null;      // { correct: boolean, correctText: string }
   var bonusSelection = [];      // bottles picked for the attempt in progress (never persisted)
+  var bonusFlash = null;        // { order: [..], hits: [bool x3] } while a check is being shown
+  var flashTimer = null;        // clears bonusFlash after BONUS_BLINK_MS
   var note = "";                // "question set changed" note
   var el = {};
 
   var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623"];   // matches the bottles in index.html
   var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red"];
   var SLOT_LABELS = ["1st", "2nd", "3rd"];
+  var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
 
   var SCREENS = ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question",
     "screen-feedback", "screen-bonus", "screen-results", "screen-error"];
@@ -61,6 +64,12 @@
     view = "error";
     el.errorMessage.textContent = "No questions are available right now. Please add questions to js/questions.js and reload.";
     render();
+  }
+
+  // Cancels a running blink and drops the checked order it was showing.
+  function clearBonusFlash() {
+    if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+    bonusFlash = null;
   }
 
   function boot() {
@@ -197,6 +206,7 @@
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
     bonusSelection = [];
+    clearBonusFlash();
     persist();
     view = "instructions";
     render();
@@ -220,7 +230,7 @@
     // "welcomeBack" names a screen, never a playable phase — resume the question.
     if (view === "welcomeBack") view = "question";
     if (view === "feedback") restoreFeedback();
-    if (view === "bonus") restoreBonusSelection();
+    if (view === "bonus") { clearBonusFlash(); bonusSelection = []; }
     render();
   }
 
@@ -231,6 +241,7 @@
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
     bonusSelection = [];
+    clearBonusFlash();
     persist();
     view = "question";
     render();
@@ -258,11 +269,13 @@
     persist();
     lastFeedback = null;
     bonusSelection = [];
+    clearBonusFlash();
     view = state.phase; // instructions is unreachable here: "question", "bonus" or "results"
     render();
   }
 
   function onBottle(index) {
+    if (bonusFlash) return;   // the last check is still on screen
     if (view !== "bonus" || !state.bonus || state.bonus.resolved) return;
     if (!Number.isInteger(index) || index < 0 || index >= state.bonus.target.length) return;
     var picked = bonusSelection.indexOf(index);
@@ -272,31 +285,36 @@
   }
 
   function onBonusReset() {
+    if (bonusFlash) return;   // the last check is still on screen
     if (view !== "bonus" || !state.bonus || state.bonus.resolved) return;
     bonusSelection = [];
     render();
   }
 
   function onBonusCheck() {
+    if (bonusFlash) return;   // a check is already being shown
     if (view !== "bonus" || !state.bonus || state.bonus.resolved) return;
     if (bonusSelection.length !== state.bonus.target.length) return;
     var next = GameLogic.resolveBonus(state, bonusSelection.slice(), new Date());
     if (next === state) return;
     state = next;
-    // On an open round the checked order stays in the slots, so the next attempt
-    // only has to swap the bottles that were wrong. A settled round clears them.
-    if (state.bonus.resolved) bonusSelection = [];
+    // No bottles are kept after a check: only a full match leaves the order in
+    // the slots. A partial miss first blinks the boxes that were right, then
+    // clears them so the next attempt starts from an empty slate.
+    bonusSelection = [];
+    if (!state.bonus.resolved) {
+      var hits = GameLogic.matchPositions(state.bonus.target, state.bonus.tried);
+      if (hits && hits.indexOf(true) !== -1) {
+        bonusFlash = { order: state.bonus.tried.slice(), hits: hits };
+        flashTimer = setTimeout(function () {
+          flashTimer = null;
+          bonusFlash = null;
+          render();
+        }, BONUS_BLINK_MS);
+      }
+    }
     persist();
     render();
-  }
-
-  // The stored order comes back after a reload so a mid-round refresh does not
-  // cost the player the positions they had already confirmed.
-  function restoreBonusSelection() {
-    var bonus = state && state.bonus;
-    bonusSelection = (bonus && !bonus.resolved && Array.isArray(bonus.tried))
-      ? bonus.tried.slice()
-      : [];
   }
 
   function restoreFeedback() {
@@ -323,8 +341,8 @@
   }
 
   // Always renders every slot, filling the ones the player has already picked.
-  // `rings` marks the positions the last check got right, where the slot still
-  // holds the bottle that was checked there; `matched` is the settled full match.
+  // `rings` marks the positions the last check got right (only passed while the
+  // blink is on screen); `matched` is the settled full match.
   function slotMarkup(indices, size, matched, rings) {
     var markup = "";
     for (var i = 0; i < size; i++) {
@@ -446,7 +464,8 @@
     var bonus = state.bonus;
     var entry = state.answers[state.questionIndex] || { points: 0 };
     var size = bonus.target.length;
-    var indices = bonus.resolved ? bonus.target : bonusSelection;
+    var frozen = !!bonusFlash;   // a check is being shown; input is locked out
+    var indices = frozen ? bonusFlash.order : (bonus.resolved ? bonus.target : bonusSelection);
 
     // Once the round is settled the "how to pick" hint no longer applies.
     el.bonusIntro.hidden = bonus.resolved;
@@ -454,15 +473,9 @@
       ? "Attempts used: <b>" + bonus.attemptsUsed + "</b> of " + GameLogic.BONUS_MAX_ATTEMPTS
       : "Attempts left: <b>" + (GameLogic.BONUS_MAX_ATTEMPTS - bonus.attemptsUsed) + "</b>";
 
-    // Per-position feedback from the last check. Only shown while the round is
-    // open; once it is settled the slots show the answer (or the full-match pulse).
-    var rings = null;
-    if (!bonus.resolved && bonus.tried) {
-      var hits = GameLogic.matchPositions(bonus.target, bonus.tried);
-      if (hits) {
-        rings = hits.map(function (hit, i) { return hit && indices[i] === bonus.tried[i]; });
-      }
-    }
+    // Per-position feedback: while a partial miss is on screen the boxes that
+    // were right blink green, then the order clears for the next attempt.
+    var rings = frozen ? bonusFlash.hits : null;
 
     el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched, rings);
 
@@ -481,8 +494,8 @@
       el.bonusCheck.hidden = false;
       el.bonusReset.hidden = false;
       el.bonusNext.hidden = true;
-      el.bonusCheck.disabled = bonusSelection.length !== size;
-      el.bonusReset.disabled = bonusSelection.length === 0;
+      el.bonusCheck.disabled = frozen || bonusSelection.length !== size;
+      el.bonusReset.disabled = frozen || bonusSelection.length === 0;
     }
 
     Array.prototype.forEach.call(el.bonusBottles.querySelectorAll(".bottle"), function (btn) {
@@ -490,7 +503,7 @@
       var picked = bonusSelection.indexOf(index) !== -1;
       btn.classList.toggle("is-picked", picked);
       btn.setAttribute("aria-pressed", picked ? "true" : "false");
-      btn.disabled = bonus.resolved || (!picked && bonusSelection.length >= size);
+      btn.disabled = frozen || bonus.resolved || (!picked && bonusSelection.length >= size);
     });
 
     $("screen-bonus").hidden = false;

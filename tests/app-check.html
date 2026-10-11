@@ -57,8 +57,7 @@
     return [t[1], t[2], t[0]];
   }
   function pick(order) {
-    // A checked order stays in the slots now, so clear it before rebuilding one.
-    click($("btn-bonus-reset"));
+    // Orders clear after every check, so the slots are empty when one starts.
     order.forEach(function (i) { click(bottles()[i]); });
     click($("btn-bonus-check"));
   }
@@ -268,68 +267,85 @@
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
-    step("f2. a partial match rings only the right position and keeps the order in the slots", function () {
+    step("f2. a partial match blinks the right position green and freezes the round", function () {
       var t = app().getState().bonus.target;
       var order = [t[0], t[2], t[1]];   // position 1 is right, positions 2 and 3 are not
       pick(order);
       var st = app().getState();
+      var slots = $("bonus-slots").querySelectorAll(".slot");
       var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
       var rings = $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length;
       var matched = $("bonus-slots").querySelectorAll(".slot.is-matched").length;
-      // The ring must be a steady neon one on the position that was right, and the
-      // slots that were wrong must show nothing.
-      var slots = $("bonus-slots").querySelectorAll(".slot");
+      // The right position blinks neon green; the two wrong slots stay bare, and
+      // every control is locked while the blink is on screen.
       var ring = $("bonus-slots").querySelector(".slot.is-correct-pos");
       var cs = ring ? W().getComputedStyle(ring) : null;
       var rgb = cs ? cs.borderTopColor.match(/\d+/g) : null;
-      var steady = !!cs && cs.boxShadow !== "none" && cs.animationName === "none" &&
-        !!rgb && +rgb[1] > 180 && +rgb[0] < 120 && +rgb[2] < 120;
+      var reduced = W().matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var glowing = !!cs && !!rgb && +rgb[1] > 180 && +rgb[0] < 120 && +rgb[2] < 120 &&
+        (reduced ? cs.animationName === "none" : cs.animationName.indexOf("blink") > -1);
       var wrongBare = slots[1] ? W().getComputedStyle(slots[1]).boxShadow === "none" : false;
-      rec("f2. a partial match rings only the right position and keeps the order in the slots",
+      var locked = Array.prototype.every.call(bottles(), function (b) { return b.disabled; });
+      rec("f2. a partial match blinks the right position green and freezes the round",
         st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && st.score === 6 &&
           st.bonus.tried.join(",") === order.join(",") &&
           $("bonus-verdict").textContent === "No match - try again." &&
           $("bonus-attempts").textContent.indexOf("2") > -1 &&
-          filled === 3 && rings === 1 && matched === 0 &&
-          ring === slots[0] && steady && wrongBare &&
-          $("btn-bonus-check").disabled === false,
+          filled === 3 && rings === 1 && matched === 0 && ring === slots[0] && glowing && wrongBare &&
+          locked && $("btn-bonus-check").disabled === true && $("btn-bonus-reset").disabled === true,
         "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed + " score=" + st.score +
-          " tried=" + JSON.stringify(st.bonus.tried) + " filled=" + filled + " rings=" + rings +
-          " matched=" + matched + " ringIsFirst=" + (ring === slots[0]) + " steady=" + steady +
-          " wrongBare=" + wrongBare + " checkDisabled=" + $("btn-bonus-check").disabled +
-          " verdict='" + $("bonus-verdict").textContent + "' attempts='" + $("bonus-attempts").textContent + "'");
+          " filled=" + filled + " rings=" + rings + " matched=" + matched + " ringIsFirst=" + (ring === slots[0]) +
+          " glowing=" + glowing + " wrongBare=" + wrongBare + " locked=" + locked +
+          " checkDisabled=" + $("btn-bonus-check").disabled);
+    });
+
+    await wait(2400);
+    step("f2c. after the blink the boxes are emptied for the next attempt", function () {
+      var st = app().getState();
+      var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
+      var rings = $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length;
+      var ready = 0;
+      Array.prototype.forEach.call(bottles(), function (b) { if (!b.disabled) ready++; });
+      rec("f2c. after the blink the boxes are emptied for the next attempt",
+        st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && filled === 0 && rings === 0 &&
+          ready === 3 && $("btn-bonus-check").disabled === true,
+        "attempts=" + st.bonus.attemptsUsed + " filled=" + filled + " rings=" + rings +
+          " clickableBottles=" + ready + " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
     await reload();
-    step("f2b. reloading mid-round brings back the checked order and its ring", function () {
+    step("f2b. reloading mid-round starts from empty boxes with the attempt still spent", function () {
       var card = $("welcome-back-progress").textContent;
       click($("btn-continue"));
       var st = app().getState();
       var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
-      var rings = $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length;
       var picked = $("bonus-bottles").querySelectorAll(".bottle.is-picked").length;
-      rec("f2b. reloading mid-round brings back the checked order and its ring",
+      var ready = 0;
+      Array.prototype.forEach.call(bottles(), function (b) { if (!b.disabled) ready++; });
+      rec("f2b. reloading mid-round starts from empty boxes with the attempt still spent",
         card === "Question 2 of 10" && app().getView() === "bonus" && st.bonus.attemptsUsed === 1 &&
-          st.bonus.resolved === false && filled === 3 && rings === 1 && picked === 3 &&
-          $("btn-bonus-check").disabled === false,
+          st.bonus.resolved === false && filled === 0 && picked === 0 && ready === 3 &&
+          $("btn-bonus-check").disabled === true,
         "card='" + card + "' view=" + app().getView() + " attempts=" + st.bonus.attemptsUsed +
-          " filled=" + filled + " rings=" + rings + " picked=" + picked +
+          " filled=" + filled + " picked=" + picked + " clickableBottles=" + ready +
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
-    step("f3. three misses settle the question at its 1 consolation point", function () {
+    step("f3. a miss with nothing right clears at once, and the third settles at 1 point", function () {
       pick(missOrder());
       var st = app().getState();
       var stillOpen = st.bonus.resolved === false;
       var verdictBefore = $("bonus-verdict").textContent;
+      var clearedAtOnce = $("bonus-slots").querySelectorAll(".slot.is-filled").length === 0 &&
+        $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length === 0;
       if (stillOpen) pick(missOrder());
       var done = app().getState();
-      rec("f3. three misses settle the question at its 1 consolation point",
-        stillOpen && verdictBefore === "No match - try again." && done.bonus.resolved === true &&
+      rec("f3. a miss with nothing right clears at once, and the third settles at 1 point",
+        stillOpen && clearedAtOnce && verdictBefore === "No match - try again." && done.bonus.resolved === true &&
           done.bonus.matched === false && done.bonus.attemptsUsed === 3 &&
           done.answers[1].points === 1 && done.score === 6 &&
           $("bonus-verdict").textContent.indexOf("You still keep 1 point") > -1,
-        "stillOpen=" + stillOpen + " verdictBefore='" + verdictBefore + "' attempts=" + done.bonus.attemptsUsed +
+        "stillOpen=" + stillOpen + " clearedAtOnce=" + clearedAtOnce + " verdictBefore='" + verdictBefore + "' attempts=" + done.bonus.attemptsUsed +
           " points=" + done.answers[1].points + " score=" + done.score +
           " verdict='" + $("bonus-verdict").textContent + "'");
     });
