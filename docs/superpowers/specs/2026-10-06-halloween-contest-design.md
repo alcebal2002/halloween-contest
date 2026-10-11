@@ -251,13 +251,13 @@ time and the resolved bonus adds the remainder (4 / 2 / 1 / 0), so `score` is al
 
 ### 10.3 Bonus round interaction
 
-Three bottles — toxic green ☠, deep purple ⚗, blood red ☣ (colour is never the only signal).
+Four bottles — toxic green ☠, deep purple ⚗, blood red ☣, cyanide cyan ⚱ (colour is never the only signal).
 The player clicks bottles to build an order left to right, **Check order** compares it with the
 hidden permutation, **Clear** resets the picks. A miss leaves the round open with one attempt
 consumed; the round settles on a match or on the third miss, then the summary replaces the
 controls and **Next** continues. The hidden order is shown once the round settles.
 
-On a match, each of the three filled slots is ringed in neon green (`--neon`, `#39ff14`) with a
+On a match, each of the four filled slots is ringed in neon green (`--neon`, `#39ff14`) with a
 soft glow that pulses (the pulse is disabled under `prefers-reduced-motion`), so the player can
 see that every position matched. Only the **border** (and its glow) changes — the bottle inside
 keeps its own colour and fill. The highlight is derived from `bonus.matched` at render time,
@@ -272,9 +272,9 @@ bottles and the controls locked while the flash is on screen. Only the border bl
 inside is untouched. A check that gets nothing right clears at
 once. The flash is derived from `bonus.tried`, the order submitted on the last check (an optional
 stored field), never from the live selection; leaving or reloading the round drops it, so a
-mid-round reload starts from empty slots with the attempts already spent. With three distinct
-bottles only 0, 1 or 3 positions can ever match, so a partial result is always a single flashing
-slot.
+mid-round reload starts from empty slots with the attempts already spent. With four distinct
+bottles the number of positions that can match is 0, 1, 2 or 4 (never 3), so a partial result
+flashes one or two slots.
 
 ### 10.4 Score bar
 

@@ -54,7 +54,7 @@
   // A full order that can never equal the hidden target (rotate it by one).
   function missOrder() {
     var t = app().getState().bonus.target;
-    return [t[1], t[2], t[0]];
+    return t.slice(1).concat(t[0]);
   }
   function pick(order) {
     // Orders clear after every check, so the slots are empty when one starts.
@@ -179,17 +179,18 @@
           "' checkDisabled=" + $("btn-bonus-check").disabled + " hud='" + hud() + "'");
     });
 
-    step("2c. Check stays disabled until all three bottles are picked", function () {
+    step("2c. Check stays disabled until all four bottles are picked", function () {
       var target = app().getState().bonus.target;
       click(bottles()[target[0]]);
       click(bottles()[target[1]]);
+      click(bottles()[target[2]]);
       var half = $("btn-bonus-check").disabled;
       var slotsFilled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
-      click(bottles()[target[2]]);
+      click(bottles()[target[3]]);
       var full = $("btn-bonus-check").disabled;
-      rec("2c. Check stays disabled until all three bottles are picked",
-        half === true && slotsFilled === 2 && full === false && bottles()[target[2]].className.indexOf("is-picked") > -1,
-        "afterTwoDisabled=" + half + " slots=" + slotsFilled + " afterThreeDisabled=" + full);
+      rec("2c. Check stays disabled until all four bottles are picked",
+        half === true && slotsFilled === 3 && full === false && bottles()[target[3]].className.indexOf("is-picked") > -1,
+        "afterThreeDisabled=" + half + " slots=" + slotsFilled + " afterFourDisabled=" + full);
     });
 
     step("2d. matching the order on the first attempt pays 5 points", function () {
@@ -206,7 +207,7 @@
           "' hud='" + hud() + "'");
     });
 
-    step("2d2. a match rings all three order slots in neon green (border only)", function () {
+    step("2d2. a match rings all four order slots in neon green (border only)", function () {
       var slots = $("bonus-slots").querySelectorAll(".slot");
       var matched = $("bonus-slots").querySelectorAll(".slot.is-matched");
       var glowing = 0, pulsing = 0, green = false, borderOnly = 0;
@@ -221,9 +222,9 @@
         if (glyphColor !== "rgb(57, 255, 20)" && cs.backgroundColor !== "rgba(57, 255, 20, 0.14)") borderOnly++;
       });
       var reduced = W().matchMedia("(prefers-reduced-motion: reduce)").matches;
-      rec("2d2. a match rings all three order slots in neon green (border only)",
-        slots.length === 3 && matched.length === 3 && glowing === 3 && green && borderOnly === 3 &&
-          (reduced || pulsing === 3),
+      rec("2d2. a match rings all four order slots in neon green (border only)",
+        slots.length === 4 && matched.length === 4 && glowing === 4 && green && borderOnly === 4 &&
+          (reduced || pulsing === 4),
         "slots=" + slots.length + " matched=" + matched.length + " glowing=" + glowing +
           " pulsing=" + pulsing + " green=" + green + " borderOnly=" + borderOnly +
           " reducedMotion=" + reduced);
@@ -266,14 +267,14 @@
       var enabled = 0;
       Array.prototype.forEach.call(bottles(), function (b) { if (!b.disabled) enabled++; });
       rec("f1b. the next round starts un-highlighted with the bottles selectable again",
-        matched === 0 && filled === 0 && enabled === 3 && $("btn-bonus-check").disabled === true,
+        matched === 0 && filled === 0 && enabled === 4 && $("btn-bonus-check").disabled === true,
         "matched=" + matched + " filled=" + filled + " clickableBottles=" + enabled +
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
     step("f2. a partial match blinks the right position green and freezes the round", function () {
       var t = app().getState().bonus.target;
-      var order = [t[0], t[2], t[1]];   // position 1 is right, positions 2 and 3 are not
+      var order = [t[0], t[2], t[3], t[1]];   // position 1 is right, the rest are not
       pick(order);
       var st = app().getState();
       var slots = $("bonus-slots").querySelectorAll(".slot");
@@ -299,7 +300,7 @@
           st.bonus.tried.join(",") === order.join(",") &&
           $("bonus-verdict").textContent === "No match - try again." &&
           $("bonus-attempts").textContent.indexOf("2") > -1 &&
-          filled === 3 && rings === 1 && matched === 0 && ring === slots[0] && glowing && wrongBare &&
+          filled === 4 && rings === 1 && matched === 0 && ring === slots[0] && glowing && wrongBare &&
           contentBare && locked &&
           $("btn-bonus-check").disabled === true && $("btn-bonus-reset").disabled === true,
         "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed + " score=" + st.score +
@@ -317,7 +318,7 @@
       Array.prototype.forEach.call(bottles(), function (b) { if (!b.disabled) ready++; });
       rec("f2c. after the blink the boxes are emptied for the next attempt",
         st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && filled === 0 && rings === 0 &&
-          ready === 3 && $("btn-bonus-check").disabled === true,
+          ready === 4 && $("btn-bonus-check").disabled === true,
         "attempts=" + st.bonus.attemptsUsed + " filled=" + filled + " rings=" + rings +
           " clickableBottles=" + ready + " checkDisabled=" + $("btn-bonus-check").disabled);
     });
@@ -333,7 +334,7 @@
       Array.prototype.forEach.call(bottles(), function (b) { if (!b.disabled) ready++; });
       rec("f2b. reloading mid-round starts from empty boxes with the attempt still spent",
         card === "Question 2 of 10" && app().getView() === "bonus" && st.bonus.attemptsUsed === 1 &&
-          st.bonus.resolved === false && filled === 0 && picked === 0 && ready === 3 &&
+          st.bonus.resolved === false && filled === 0 && picked === 0 && ready === 4 &&
           $("btn-bonus-check").disabled === true,
         "card='" + card + "' view=" + app().getView() + " attempts=" + st.bonus.attemptsUsed +
           " filled=" + filled + " picked=" + picked + " clickableBottles=" + ready +
@@ -364,7 +365,7 @@
       var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
       var rings = $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length;
       rec("f3b. three misses fill the slots with the order but never light them up",
-        filled === 3 && matched === 0 && rings === 0 && app().getState().bonus.matched === false,
+        filled === 4 && matched === 0 && rings === 0 && app().getState().bonus.matched === false,
         "filled=" + filled + " matched=" + matched + " rings=" + rings);
     });
 

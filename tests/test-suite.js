@@ -58,7 +58,18 @@
   // A permutation that can never equal the hidden target (rotate by one).
   function missGuess(state) {
     var t = state.bonus.target;
-    return [t[1], t[2], t[0]];
+    return t.slice(1).concat(t[0]);
+  }
+
+  // Every ordering of a list of distinct values (used by the match tests).
+  function permutations(list) {
+    if (list.length <= 1) return [list.slice()];
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var rest = list.slice(0, i).concat(list.slice(i + 1));
+      permutations(rest).forEach(function (tail) { out.push([list[i]].concat(tail)); });
+    }
+    return out;
   }
 
   // Answer one question and step past it, running the bonus dry (three misses),
@@ -240,7 +251,7 @@
     assertEqual(next.bonus.matched, false);
     assertEqual(next.bonus.award, 0);
     assertEqual(next.bonus.questionId, ctx.questions[0].id);
-    assertEqual(JSON.stringify(next.bonus.target.slice().sort()), "[0,1,2]", "target must be a permutation of the three bottles");
+    assertEqual(JSON.stringify(next.bonus.target.slice().sort()), "[0,1,2,3]", "target must be a permutation of the four bottles");
   });
 
   test("advance is a no-op until the bonus round is resolved", function () {
@@ -403,15 +414,15 @@
     assertEqual(s.answers[0].points, 0);
   });
 
-  test("resolveBonus ignores guesses that are not a permutation of the three bottles", function () {
+  test("resolveBonus ignores guesses that are not a permutation of the four bottles", function () {
     var ctx = openBonus(GL, makePool(25));
     var s = ctx.state;
     var guesses = [
-      [0, 0, 1],          // repeated bottle
-      [0, 1],             // too short
-      [0, 1, 3],          // unknown bottle
-      [0, 1, 2.5],        // not an index
-      "012",              // not an array
+      [0, 0, 1, 2],       // repeated bottle
+      [0, 1, 2],          // too short
+      [0, 1, 2, 4],       // unknown bottle
+      [0, 1, 2, 2.5],     // not an index
+      "0123",             // not an array
       null
     ];
     for (var i = 0; i < guesses.length; i++) {
@@ -423,9 +434,9 @@
   test("resolveBonus ignores guesses outside the bonus phase or after it resolves", function () {
     var ctx = buildContest(GL, makePool(25), "Hero");
     var answered = GL.answerQuestion(ctx.state, ctx.questions, ctx.questions[0].correctIndex, new Date());
-    assertEqual(GL.resolveBonus(answered, [0, 1, 2], new Date()), answered, "no bonus to resolve during feedback");
+    assertEqual(GL.resolveBonus(answered, [0, 1, 2, 3], new Date()), answered, "no bonus to resolve during feedback");
     var resolved = playAttempts(GL, [true]);
-    assertEqual(GL.resolveBonus(resolved, [0, 1, 2], new Date()), resolved, "a resolved bonus must not accept more guesses");
+    assertEqual(GL.resolveBonus(resolved, [0, 1, 2, 3], new Date()), resolved, "a resolved bonus must not accept more guesses");
     assertEqual(resolved.bonus.attemptsUsed, 1, "attempt count changed after resolution");
     assertEqual(resolved.score, 5, "score changed after resolution");
   });
@@ -521,7 +532,7 @@
     assert(restored !== null, "mid-bonus state rejected on resume");
     assertEqual(restored.phase, "bonus");
     assertEqual(restored.bonus.attemptsUsed, 1, "the attempt used before the reload was lost");
-    assertEqual(restored.bonus.target.length, 3, "the hidden order must survive a reload");
+    assertEqual(restored.bonus.target.length, 4, "the hidden order must survive a reload");
     assertEqual(restored.bonus.resolved, false);
     assertEqual(restored.score, 1, "the base point must still be counted after a reload");
     var resumed = GL.resolveBonus(restored, restored.bonus.target, new Date());
@@ -535,7 +546,7 @@
     var base = JSON.parse(JSON.stringify(ctx.state));
 
     var repeatedTarget = JSON.parse(JSON.stringify(base));
-    repeatedTarget.bonus.target = [0, 0, 1];
+    repeatedTarget.bonus.target = [0, 0, 1, 2];
     assertEqual(GL.validateStoredState(repeatedTarget, pool), null, "target with a repeated bottle accepted");
 
     var tooManyAttempts = JSON.parse(JSON.stringify(base));
@@ -689,34 +700,34 @@
   /* ---- partial position feedback (spec §10.3) ---- */
 
   test("matchPositions flags exactly the positions the submitted order got right", function () {
-    assertEqual(GL.matchPositions([0, 1, 2], [0, 1, 2]).join(","), "true,true,true",
-      "a full match must flag all three positions");
-    assertEqual(GL.matchPositions([0, 1, 2], [1, 0, 2]).join(","), "false,false,true",
-      "only the third position matches");
-    assertEqual(GL.matchPositions([0, 1, 2], [1, 2, 0]).join(","), "false,false,false",
+    assertEqual(GL.matchPositions([0, 1, 2, 3], [0, 1, 2, 3]).join(","), "true,true,true,true",
+      "a full match must flag all four positions");
+    assertEqual(GL.matchPositions([0, 1, 2, 3], [0, 1, 3, 2]).join(","), "true,true,false,false",
+      "the first two positions match");
+    assertEqual(GL.matchPositions([0, 1, 2, 3], [0, 3, 1, 2]).join(","), "true,false,false,false",
+      "only the first position matches");
+    assertEqual(GL.matchPositions([0, 1, 2, 3], [3, 0, 1, 2]).join(","), "false,false,false,false",
       "a rotating miss must flag nothing");
-    assertEqual(GL.matchPositions([2, 0, 1], [1, 0, 2]).join(","), "false,true,false",
-      "only the second position matches");
   });
 
-  test("matchPositions can never report exactly two hits with three distinct bottles", function () {
-    var perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+  test("matchPositions can never report exactly three hits with four distinct bottles", function () {
+    var perms = permutations([0, 1, 2, 3]);
     var seen = {};
     perms.forEach(function (target) {
       perms.forEach(function (guess) {
         var hits = GL.matchPositions(target, guess).filter(Boolean).length;
-        assert(hits !== 2, "two hits from " + JSON.stringify(guess) + " against " + JSON.stringify(target));
+        assert(hits !== 3, "three hits from " + JSON.stringify(guess) + " against " + JSON.stringify(target));
         seen[hits] = true;
       });
     });
-    assert(seen[0] && seen[1] && seen[3], "0, 1 and 3 hits must all be reachable");
+    assert(seen[0] && seen[1] && seen[2] && seen[4], "0, 1, 2 and 4 hits must all be reachable");
   });
 
   test("matchPositions rejects a target or a submitted order that is not a permutation", function () {
-    assertEqual(GL.matchPositions(null, [0, 1, 2]), null, "missing target accepted");
-    assertEqual(GL.matchPositions([0, 1, 2], [0, 1, 0]), null, "repeated bottle accepted");
-    assertEqual(GL.matchPositions([0, 1, 2], [0, 1]), null, "short order accepted");
-    assertEqual(GL.matchPositions([0, 1, 2], "012"), null, "string order accepted");
+    assertEqual(GL.matchPositions(null, [0, 1, 2, 3]), null, "missing target accepted");
+    assertEqual(GL.matchPositions([0, 1, 2, 3], [0, 1, 2, 0]), null, "repeated bottle accepted");
+    assertEqual(GL.matchPositions([0, 1, 2, 3], [0, 1, 2]), null, "short order accepted");
+    assertEqual(GL.matchPositions([0, 1, 2, 3], "0123"), null, "string order accepted");
   });
 
   test("resolveBonus records the submitted order for position feedback", function () {
@@ -758,7 +769,7 @@
     assert(old !== null, "an older state without a recorded order must stay valid");
     assertEqual(old.bonus.tried, null, "a missing recorded order must load as null");
 
-    [[0, 0, 1], [0, 1], "012", 7, true].forEach(function (bad) {
+    [[0, 0, 1, 2], [0, 1, 2], [0, 1, 2, 4], "0123", 7, true].forEach(function (bad) {
       var broken = JSON.parse(JSON.stringify(state));
       broken.bonus.tried = bad;
       assertEqual(GL.validateStoredState(broken, pool), null,

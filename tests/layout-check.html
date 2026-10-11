@@ -106,11 +106,12 @@
       click(bottles[target[1]]);
       await wait(50);
       checkScreen("bonus (two bottles picked)", "bonus");
-      rec("bonus: three order slots are shown",
-        D().querySelectorAll("#bonus-slots .slot").length === 3,
+      rec("bonus: four order slots are shown",
+        D().querySelectorAll("#bonus-slots .slot").length === 4,
         D().querySelectorAll("#bonus-slots .slot").length);
 
       click(bottles[target[2]]);
+      click(bottles[target[3]]);
       click($("btn-bonus-check"));
       await wait(50);
       checkScreen("bonus (resolved)", "bonus");

@@ -15,9 +15,9 @@
   var note = "";                // "question set changed" note
   var el = {};
 
-  var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623"];   // matches the bottles in index.html
-  var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red"];
-  var SLOT_LABELS = ["1st", "2nd", "3rd"];
+  var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623", "\u26b1"];   // matches the bottles in index.html
+  var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red", "Cyanide cyan"];
+  var SLOT_LABELS = ["1st", "2nd", "3rd", "4th"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
 
   var SCREENS = ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question",
