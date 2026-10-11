@@ -168,6 +168,8 @@ function createBonus(questionId, rng) {
   return {
     questionId: questionId,
     target: shuffle([0, 1, 2], rng),
+    // The order submitted on the last check; null until the player checks one.
+    tried: null,
     attemptsUsed: 0,
     matched: false,
     resolved: false,
@@ -201,6 +203,13 @@ function pointsForAttempt(attempt) {
   return BONUS_MISS_POINTS;
 }
 
+/* Which positions of a submitted order sit where the hidden target wants them.
+   Only meaningful for full permutations; anything else yields null. */
+function matchPositions(target, tried) {
+  if (!isPermutation(target) || !isPermutation(tried)) return null;
+  return target.map(function (bottle, i) { return tried[i] === bottle; });
+}
+
 function resolveBonus(state, guess, now) {
   if (!state || state.phase !== "bonus" || !state.bonus || state.bonus.resolved) return state;
   if (!isPermutation(guess)) return state;
@@ -210,6 +219,7 @@ function resolveBonus(state, guess, now) {
   var next = cloneState(state);
   applyTick(next, state, now);
   var bonus = next.bonus;
+  bonus.tried = guess.slice();   // kept for the per-position feedback, even on a miss
   bonus.attemptsUsed += 1;
   bonus.matched = sameOrder(guess, bonus.target);
   if (bonus.matched || bonus.attemptsUsed >= BONUS_MAX_ATTEMPTS) {
@@ -286,6 +296,8 @@ function validateBonus(raw, answers, questionIndex) {
   if (typeof raw.matched !== "boolean" || typeof raw.resolved !== "boolean") return null;
   if (!Number.isInteger(raw.award) || raw.award < 0 || raw.award > MAX_POINTS_PER_QUESTION) return null;
   if (raw.matched && !raw.resolved) return null;
+  // Optional: states saved before per-position feedback existed simply have no `tried`.
+  if (raw.tried != null && !isPermutation(raw.tried)) return null;
 
   var entry = answers[questionIndex];
   if (!entry || entry.questionId !== raw.questionId || !entry.correct) return null;
@@ -305,6 +317,7 @@ function validateBonus(raw, answers, questionIndex) {
   return {
     questionId: raw.questionId,
     target: raw.target.slice(),
+    tried: raw.tried == null ? null : raw.tried.slice(),
     attemptsUsed: raw.attemptsUsed,
     matched: raw.matched,
     resolved: raw.resolved,
@@ -431,6 +444,7 @@ var GameLogic = {
   resolveOrder: resolveOrder,
   answerQuestion: answerQuestion,
   resolveBonus: resolveBonus,
+  matchPositions: matchPositions,
   pointsForAttempt: pointsForAttempt,
   advance: advance,
   formatTimestamp: formatTimestamp,

@@ -263,6 +263,15 @@ see that every position matched. The highlight is derived from `bonus.matched` a
 not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
 the bottles selectable again. A settled miss never lights the slots.
 
+Every check also leaves the submitted order in the slots, so after a miss the player only has to
+swap the bottles that were wrong. Each slot the last check placed correctly gets the same neon
+ring with a **steady** glow (no pulse) — the full-match pulse wins where both apply. The rings
+come from `bonus.tried`, the order submitted on the last check (an optional stored field), never
+from the live selection alone: a ring is shown only while the round is open *and* the slot still
+holds the bottle that was checked there, so **Clear** empties the slots and the rings with them,
+and a reload mid-round restores both from `bonus.tried`. With three distinct bottles only 0, 1 or
+3 positions can ever match, so a partial result is always a single ring.
+
 ### 10.4 Score bar
 
 `#hud` sits at the top of the card from the instructions screen through to the results, and is
@@ -281,17 +290,22 @@ opens, not at the last answer. The results screen shows `formatDuration(elapsedM
 
 `STORAGE_KEY` is **`halloweenContest.state.v2`** — v1 states are not migrated (the old `score`
 meant "correct answers", which cannot be mapped onto the new table). The legacy v1 key is
-deleted on boot. New fields: `bonus { questionId, target, attemptsUsed, matched, resolved,
-award }`, `startedAt`, `elapsedMs`, `lastTickAt`; `answers[]` gains `points`. New phases:
-`instructions`, `bonus`. Validation additionally rejects a bonus outside the bonus phase, a
-non-permutation target, more than three attempts, and any score that disagrees with the sum of
-the recorded points.
+deleted on boot. New fields: `bonus { questionId, target, tried, attemptsUsed, matched,
+resolved, award }`, `startedAt`, `elapsedMs`, `lastTickAt`; `answers[]` gains `points`. New
+phases: `instructions`, `bonus`. `bonus.tried` (the last checked order, for the per-position
+rings of §10.3) is optional: a state saved before it existed still validates, with no rings until
+the next check. Validation additionally rejects a bonus outside the bonus phase, a
+non-permutation `target` or `tried`, more than three attempts, and any score that disagrees with
+the sum of the recorded points.
 
 ### 10.7 Tests
 
-`tests/test-suite.js` (Node and browser, 51 assertions) covers the points table, bonus
-validation, elapsed-time accumulation and the gap cap, plus everything in §8.
-`tests/app-check.html` (27 checks) drives the real page through instructions, HUD, both bonus
-outcomes (including the neon match highlight and its reset on the next round), resume from every phase, and the results screen. `tests/layout-check.html` (36
+`tests/test-suite.js` (Node and browser, 56 assertions) covers the points table, bonus
+validation, the per-position `matchPositions` helper, elapsed-time accumulation and the gap cap,
+plus everything in §8.
+`tests/app-check.html` (28 checks) drives the real page through instructions, HUD, both bonus
+outcomes (the neon match highlight, the steady ring on a partial match and its reset, and the
+reload that restores a mid-round order), resume from every phase, and the results screen.
+`tests/layout-check.html` (36
 checks) repeats the 360px overflow assertion at every step of the flow.
 `tests/make-nostorage.js` regenerates the `localStorage`-blocked copy of `index.html`.

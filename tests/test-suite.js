@@ -686,5 +686,85 @@
     assert(GL.beginPlay(restored).phase === "question", "Continue must be able to start the play");
   });
 
+  /* ---- partial position feedback (spec §10.3) ---- */
+
+  test("matchPositions flags exactly the positions the submitted order got right", function () {
+    assertEqual(GL.matchPositions([0, 1, 2], [0, 1, 2]).join(","), "true,true,true",
+      "a full match must flag all three positions");
+    assertEqual(GL.matchPositions([0, 1, 2], [1, 0, 2]).join(","), "false,false,true",
+      "only the third position matches");
+    assertEqual(GL.matchPositions([0, 1, 2], [1, 2, 0]).join(","), "false,false,false",
+      "a rotating miss must flag nothing");
+    assertEqual(GL.matchPositions([2, 0, 1], [1, 0, 2]).join(","), "false,true,false",
+      "only the second position matches");
+  });
+
+  test("matchPositions can never report exactly two hits with three distinct bottles", function () {
+    var perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+    var seen = {};
+    perms.forEach(function (target) {
+      perms.forEach(function (guess) {
+        var hits = GL.matchPositions(target, guess).filter(Boolean).length;
+        assert(hits !== 2, "two hits from " + JSON.stringify(guess) + " against " + JSON.stringify(target));
+        seen[hits] = true;
+      });
+    });
+    assert(seen[0] && seen[1] && seen[3], "0, 1 and 3 hits must all be reachable");
+  });
+
+  test("matchPositions rejects a target or a submitted order that is not a permutation", function () {
+    assertEqual(GL.matchPositions(null, [0, 1, 2]), null, "missing target accepted");
+    assertEqual(GL.matchPositions([0, 1, 2], [0, 1, 0]), null, "repeated bottle accepted");
+    assertEqual(GL.matchPositions([0, 1, 2], [0, 1]), null, "short order accepted");
+    assertEqual(GL.matchPositions([0, 1, 2], "012"), null, "string order accepted");
+  });
+
+  test("resolveBonus records the submitted order for position feedback", function () {
+    var ctx = buildContest(GL, makePool(25), "Hero");
+    var state = ctx.state;
+    var qs = ctx.questions;
+    state = GL.answerQuestion(state, qs, qs[0].correctIndex, new Date());
+    state = GL.advance(state, qs, new Date());
+    assert(state.phase === "bonus" && state.bonus.tried == null,
+      "a fresh bonus must not claim a previous attempt");
+    var guess = missGuess(state);
+    state = GL.resolveBonus(state, guess, new Date());
+    assert(state.bonus.resolved === false, "one miss must not settle the round");
+    assert(Array.isArray(state.bonus.tried) && state.bonus.tried.join(",") === guess.join(","),
+      "the submitted order was not recorded, got " + JSON.stringify(state.bonus.tried));
+    state = GL.resolveBonus(state, state.bonus.target, new Date());
+    assertEqual(state.bonus.tried.join(","), state.bonus.target.join(","),
+      "a match must record the winning order too");
+  });
+
+  test("validateStoredState keeps the recorded order, accepts states without it and rejects bad ones", function () {
+    var pool = makePool(25);
+    var ctx = buildContest(GL, pool, "Hero");
+    var state = ctx.state;
+    var qs = ctx.questions;
+    state = GL.answerQuestion(state, qs, qs[0].correctIndex, new Date());
+    state = GL.advance(state, qs, new Date());
+    state = GL.resolveBonus(state, missGuess(state), new Date());
+
+    var restored = GL.validateStoredState(JSON.parse(JSON.stringify(state)), pool);
+    assert(restored !== null, "a mid-bonus state with a recorded order was rejected");
+    assertEqual(restored.bonus.tried.join(","), state.bonus.tried.join(","),
+      "the recorded order was not preserved");
+
+    // A state written before this field existed must still load: no progress loss.
+    var legacy = JSON.parse(JSON.stringify(state));
+    delete legacy.bonus.tried;
+    var old = GL.validateStoredState(legacy, pool);
+    assert(old !== null, "an older state without a recorded order must stay valid");
+    assertEqual(old.bonus.tried, null, "a missing recorded order must load as null");
+
+    [[0, 0, 1], [0, 1], "012", 7, true].forEach(function (bad) {
+      var broken = JSON.parse(JSON.stringify(state));
+      broken.bonus.tried = bad;
+      assertEqual(GL.validateStoredState(broken, pool), null,
+        "invalid recorded order accepted: " + JSON.stringify(bad));
+    });
+  });
+
   return { tests: tests };
 });

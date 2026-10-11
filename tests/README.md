@@ -6,9 +6,9 @@ manual one.
 
 | Runner | How to run | Expected verdict |
 | --- | --- | --- |
-| `node tests/run-tests.js` | Node ≥ 14, from the project root | `51 passed, 0 failed`, exit code `0` |
-| `tests/test.html` | open directly (`file://`) or serve the folder | `51 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `27 passed, 0 failed` |
+| `node tests/run-tests.js` | Node ≥ 14, from the project root | `56 passed, 0 failed`, exit code `0` |
+| `tests/test.html` | open directly (`file://`) or serve the folder | `56 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `28 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `36 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
 | `tests/boot-variants.html?variant=getitem` | serve the folder, open `/tests/boot-variants.html?variant=getitem` | `7 passed, 0 failed` |
@@ -31,16 +31,18 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
 
 - **`run-tests.js` / `test.html`** — the same `test-suite.js` in two environments (Node and
   browser), covering question validation and selection, the state machine (instructions →
-  question → feedback → bonus → results), the poison-bonus points table (5 / 3 / 2 / 1 / 0),
-  elapsed play time with the five-minute gap cap, timestamps, and storage validation
-  (including a mid-bonus round-trip). If these two ever disagree, a UMD guard in
-  `js/game-logic.js` or `js/questions.js` has broken.
+  question → feedback → bonus → results), the poison-bonus points table (5 / 3 / 2 / 1 / 0), the
+  per-position `matchPositions` helper, elapsed play time with the five-minute gap cap,
+  timestamps, and storage validation (including a mid-bonus round-trip and the optional
+  recorded order). If these two ever disagree, a UMD guard in `js/game-logic.js` or
+  `js/questions.js` has broken.
 - **`app-check.html`** — drives the real `index.html` in an iframe: nickname validation, the
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), immediate
   feedback, the bonus round (open → pick three bottles → first-attempt match pays 5 → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following
-  round, resume from the welcome-back card in all phases, start over, swapped/corrupt data,
-  keyboard start, and the results screen
+  round, the steady ring on a partial match with the checked order left in the slots, the
+  reload that restores that order, resume from the welcome-back card in all phases, start over,
+  swapped/corrupt data, keyboard start, and the results screen
   (points, total time, timestamp, 10 review rows).
 - **`layout-check.html`** — renders the page in a genuine 360px viewport and walks the whole
   flow (nickname → instructions → question → feedback → bonus with two bottles picked → bonus

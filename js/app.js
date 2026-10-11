@@ -220,7 +220,7 @@
     // "welcomeBack" names a screen, never a playable phase — resume the question.
     if (view === "welcomeBack") view = "question";
     if (view === "feedback") restoreFeedback();
-    if (view === "bonus") bonusSelection = [];
+    if (view === "bonus") restoreBonusSelection();
     render();
   }
 
@@ -283,9 +283,20 @@
     var next = GameLogic.resolveBonus(state, bonusSelection.slice(), new Date());
     if (next === state) return;
     state = next;
-    bonusSelection = [];
+    // On an open round the checked order stays in the slots, so the next attempt
+    // only has to swap the bottles that were wrong. A settled round clears them.
+    if (state.bonus.resolved) bonusSelection = [];
     persist();
     render();
+  }
+
+  // The stored order comes back after a reload so a mid-round refresh does not
+  // cost the player the positions they had already confirmed.
+  function restoreBonusSelection() {
+    var bonus = state && state.bonus;
+    bonusSelection = (bonus && !bonus.resolved && Array.isArray(bonus.tried))
+      ? bonus.tried.slice()
+      : [];
   }
 
   function restoreFeedback() {
@@ -312,14 +323,16 @@
   }
 
   // Always renders every slot, filling the ones the player has already picked.
-  // When the checked order matched, every slot is flagged so CSS lights it up.
-  function slotMarkup(indices, size, matched) {
+  // `rings` marks the positions the last check got right, where the slot still
+  // holds the bottle that was checked there; `matched` is the settled full match.
+  function slotMarkup(indices, size, matched, rings) {
     var markup = "";
     for (var i = 0; i < size; i++) {
       var bottle = indices[i];
       var filled = typeof bottle === "number";
       var cls = "slot" + (filled ? " is-filled slot-" + bottle : "") +
-        (matched && filled ? " is-matched" : "");
+        (matched && filled ? " is-matched" : "") +
+        (rings && rings[i] && filled ? " is-correct-pos" : "");
       markup += '<li class="' + cls + '">' +
         '<span class="slot-pos" aria-hidden="true">' + SLOT_LABELS[i] + "</span>" +
         '<span class="slot-glyph"' + (filled ? "" : ' aria-hidden="true"') + ">" +
@@ -441,7 +454,17 @@
       ? "Attempts used: <b>" + bonus.attemptsUsed + "</b> of " + GameLogic.BONUS_MAX_ATTEMPTS
       : "Attempts left: <b>" + (GameLogic.BONUS_MAX_ATTEMPTS - bonus.attemptsUsed) + "</b>";
 
-    el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched);
+    // Per-position feedback from the last check. Only shown while the round is
+    // open; once it is settled the slots show the answer (or the full-match pulse).
+    var rings = null;
+    if (!bonus.resolved && bonus.tried) {
+      var hits = GameLogic.matchPositions(bonus.target, bonus.tried);
+      if (hits) {
+        rings = hits.map(function (hit, i) { return hit && indices[i] === bonus.tried[i]; });
+      }
+    }
+
+    el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched, rings);
 
     if (bonus.resolved) {
       el.bonusVerdict.className = "verdict " + (bonus.matched ? "is-correct" : "is-warn");

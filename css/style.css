@@ -323,6 +323,18 @@ h2 {
 .slot-1 { --liquid: #a855f7; --liquid-soft: rgba(168, 85, 247, 0.18); }
 .slot-2 { --liquid: #ef4444; --liquid-soft: rgba(239, 68, 68, 0.18); }
 
+/* Positions the last check got right (spec §10.3): a steady neon ring, no pulse,
+   so the player can see what to keep and only swap the wrong bottles. Declared
+   before .slot.is-matched, which overrides it with the breathing glow. */
+.slot.is-correct-pos {
+  border-style: solid;
+  border-color: var(--neon);
+  background: rgba(57, 255, 20, 0.14);
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.5), 0 0 10px rgba(57, 255, 20, 0.45);
+}
+.slot.is-correct-pos .slot-pos,
+.slot.is-correct-pos .slot-glyph { color: var(--neon); }
+
 /* A matched order lights every slot up in neon green (spec §10.3). Declared after
    .slot.is-filled so the neon border wins over the bottle colour, and animated so
    the glow breathes until the player moves on. */
