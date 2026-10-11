@@ -1,10 +1,24 @@
 /* Pure game logic: no DOM, no localStorage. Loadable in Node and the browser. */
 "use strict";
 
-var STORAGE_KEY = "halloweenContest.state.v1";
+var STORAGE_KEY = "halloweenContest.state.v2";
 var QUESTIONS_PER_CONTEST = 10;
 var MAX_NICKNAME_LENGTH = 20;
-var VALID_PHASES = ["nickname", "welcomeBack", "question", "feedback", "results"];
+var VALID_PHASES = ["nickname", "instructions", "welcomeBack", "question", "feedback", "bonus", "results"];
+
+/* Scoring: a correct answer pays 1 base point, the poison bonus on top takes the
+   question total to 5 (match on the 1st attempt), 3 (2nd), 2 (3rd) or stays at 1
+   when all three attempts fail. A wrong answer pays 0 and never opens the bonus. */
+var BONUS_TOTAL_POINTS = [5, 3, 2];  // whole-question total for a match on attempt 1, 2, 3
+var BONUS_MISS_POINTS = 1;           // correct answer, three failed attempts
+var BONUS_BASE_POINTS = 1;           // paid by the answer itself, before the bonus
+var MAX_POINTS_PER_QUESTION = BONUS_TOTAL_POINTS[0];
+var BONUS_MAX_ATTEMPTS = 3;
+var BONUS_COLOR_COUNT = 3;
+
+/* A gap longer than this (closed tab, idle, resumed the next day) is not counted
+   as play time, so the elapsed total always reads like a plausible sitting. */
+var ELAPSED_MAX_GAP_MS = 5 * 60 * 1000;
 
 function isValidQuestion(q) {
   return !!q &&
@@ -68,19 +82,52 @@ function cloneState(state) {
   return JSON.parse(JSON.stringify(state));
 }
 
+function toDate(now) {
+  var at = now instanceof Date ? now : new Date(now === undefined || now === null ? Date.now() : now);
+  return Number.isNaN(at.getTime()) ? new Date() : at;
+}
+
+/* Accumulates play time on `next` from the gap since the last recorded tick.
+   Mutates `next` only; returns the resolved timestamp so callers can stamp it. */
+function applyTick(next, state, now) {
+  var at = toDate(now);
+  var last = typeof state.lastTickAt === "string" ? new Date(state.lastTickAt).getTime() : NaN;
+  var gap = at.getTime() - last;
+  if (!Number.isNaN(last) && gap > 0 && gap <= ELAPSED_MAX_GAP_MS) {
+    next.elapsedMs = (typeof state.elapsedMs === "number" && state.elapsedMs >= 0 ? state.elapsedMs : 0) + gap;
+  }
+  next.lastTickAt = at.toISOString();
+  return at;
+}
+
 function createInitialState(nickname, pool, options) {
   var opts = options || {};
+  var started = toDate(opts.now).toISOString();
   return {
     sessionId: opts.sessionId || createNewSessionId(),
     nickname: nickname,
-    phase: "question",
+    phase: "instructions",
     questionIndex: 0,
     questionOrder: selectQuestions(pool, opts.rng).map(function (q) { return q.id; }),
     answers: [],
     score: 0,
+    bonus: null,
+    startedAt: started,
+    elapsedMs: 0,
+    lastTickAt: started,
     lastAnswerAt: null,
     finishedAt: null
   };
+}
+
+/* The user has read the rules screen and wants to play. */
+function beginPlay(state, now) {
+  if (!state || state.phase !== "instructions") return state;
+  var next = cloneState(state);
+  applyTick(next, state, now);
+  next.phase = "question";
+  next.questionIndex = 0;
+  return next;
 }
 
 function resolveOrder(state, pool) {
@@ -102,22 +149,108 @@ function answerQuestion(state, questions, selected, now) {
   var q = questions && questions[state.questionIndex];
   if (!q) return state;
   if (!Number.isInteger(selected) || selected < 0 || selected > 2) return state;
-  var at = now instanceof Date ? now : new Date(now || Date.now());
   var correct = selected === q.correctIndex;
   var next = cloneState(state);
-  next.answers = state.answers.concat([{ questionId: q.id, selected: selected, correct: correct }]);
-  next.score = state.score + (correct ? 1 : 0);
+  var at = applyTick(next, state, now);
+  next.answers = state.answers.concat([{
+    questionId: q.id,
+    selected: selected,
+    correct: correct,
+    points: correct ? BONUS_BASE_POINTS : 0
+  }]);
+  next.score = state.score + (correct ? BONUS_BASE_POINTS : 0);
   next.lastAnswerAt = at.toISOString();
   next.phase = "feedback";
-  if (state.questionIndex === questions.length - 1) next.finishedAt = next.lastAnswerAt;
   return next;
 }
 
-function advance(state, questions) {
-  if (!state || state.phase !== "feedback") return state;
+function createBonus(questionId, rng) {
+  return {
+    questionId: questionId,
+    target: shuffle([0, 1, 2], rng),
+    attemptsUsed: 0,
+    matched: false,
+    resolved: false,
+    award: 0
+  };
+}
+
+function isPermutation(list) {
+  if (!Array.isArray(list) || list.length !== BONUS_COLOR_COUNT) return false;
+  var seen = {};
+  for (var i = 0; i < list.length; i++) {
+    var v = list[i];
+    if (!Number.isInteger(v) || v < 0 || v >= BONUS_COLOR_COUNT || seen[v]) return false;
+    seen[v] = true;
+  }
+  return true;
+}
+
+function sameOrder(a, b) {
+  for (var i = 0; i < BONUS_COLOR_COUNT; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/* Whole-question total for a match on a given attempt (1-based). */
+function pointsForAttempt(attempt) {
+  if (Number.isInteger(attempt) && attempt >= 1 && attempt <= BONUS_MAX_ATTEMPTS) {
+    return BONUS_TOTAL_POINTS[attempt - 1];
+  }
+  return BONUS_MISS_POINTS;
+}
+
+function resolveBonus(state, guess, now) {
+  if (!state || state.phase !== "bonus" || !state.bonus || state.bonus.resolved) return state;
+  if (!isPermutation(guess)) return state;
+  var entry = state.answers[state.questionIndex];
+  if (!entry || entry.questionId !== state.bonus.questionId || !entry.correct) return state;
+
   var next = cloneState(state);
-  if (state.questionIndex >= questions.length - 1) {
+  applyTick(next, state, now);
+  var bonus = next.bonus;
+  bonus.attemptsUsed += 1;
+  bonus.matched = sameOrder(guess, bonus.target);
+  if (bonus.matched || bonus.attemptsUsed >= BONUS_MAX_ATTEMPTS) {
+    bonus.resolved = true;
+    var target = next.answers[state.questionIndex];
+    var total = bonus.matched ? pointsForAttempt(bonus.attemptsUsed) : BONUS_MISS_POINTS;
+    bonus.award = total - target.points;
+    target.points = total;
+    next.score = state.score + bonus.award;
+  }
+  return next;
+}
+
+/* Moves the play forward: a wrong answer skips the bonus, a correct one opens it,
+   and a resolved bonus (or the last question) closes it. */
+function advance(state, questions, now) {
+  if (!state) return state;
+  if (state.phase === "feedback") {
+    var last = state.answers[state.answers.length - 1];
+    if (!last || !last.correct) return moveToNext(state, questions, now);
+    var opened = cloneState(state);
+    applyTick(opened, state, now);
+    opened.phase = "bonus";
+    opened.bonus = createBonus(last.questionId);
+    return opened;
+  }
+  if (state.phase === "bonus") {
+    if (!state.bonus || !state.bonus.resolved) return state;
+    return moveToNext(state, questions, now);
+  }
+  return state;
+}
+
+function moveToNext(state, questions, now) {
+  var list = Array.isArray(questions) ? questions : [];
+  var next = cloneState(state);
+  applyTick(next, state, now);
+  next.bonus = null;
+  if (state.questionIndex >= list.length - 1) {
     next.phase = "results";
+    next.finishedAt = next.lastTickAt;
   } else {
     next.questionIndex = state.questionIndex + 1;
     next.phase = "question";
@@ -132,6 +265,53 @@ function formatTimestamp(iso) {
   return d.toLocaleString();
 }
 
+function formatDuration(ms) {
+  if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) return "";
+  var total = Math.floor(ms / 1000);
+  var h = Math.floor(total / 3600);
+  var m = Math.floor((total % 3600) / 60);
+  var s = total % 60;
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+  if (h > 0) return h + "h " + pad(m) + "m " + pad(s) + "s";
+  if (m > 0) return m + "m " + pad(s) + "s";
+  return s + "s";
+}
+
+/* Rebuilds and checks the bonus stored on disk. Returns the clean object or null. */
+function validateBonus(raw, answers, questionIndex) {
+  if (!raw || typeof raw !== "object") return null;
+  if (!Number.isInteger(raw.questionId)) return null;
+  if (!isPermutation(raw.target)) return null;
+  if (!Number.isInteger(raw.attemptsUsed) || raw.attemptsUsed < 0 || raw.attemptsUsed > BONUS_MAX_ATTEMPTS) return null;
+  if (typeof raw.matched !== "boolean" || typeof raw.resolved !== "boolean") return null;
+  if (!Number.isInteger(raw.award) || raw.award < 0 || raw.award > MAX_POINTS_PER_QUESTION) return null;
+  if (raw.matched && !raw.resolved) return null;
+
+  var entry = answers[questionIndex];
+  if (!entry || entry.questionId !== raw.questionId || !entry.correct) return null;
+
+  if (!raw.resolved) {
+    if (raw.matched || raw.award !== 0 || entry.points !== BONUS_BASE_POINTS) return null;
+  } else if (raw.matched) {
+    var total = pointsForAttempt(raw.attemptsUsed);
+    if (raw.attemptsUsed < 1 || raw.attemptsUsed > BONUS_MAX_ATTEMPTS) return null;
+    if (entry.points !== total || raw.award !== total - BONUS_BASE_POINTS) return null;
+  } else {
+    if (raw.attemptsUsed !== BONUS_MAX_ATTEMPTS ||
+        raw.award !== 0 ||
+        entry.points !== BONUS_MISS_POINTS) return null;
+  }
+
+  return {
+    questionId: raw.questionId,
+    target: raw.target.slice(),
+    attemptsUsed: raw.attemptsUsed,
+    matched: raw.matched,
+    resolved: raw.resolved,
+    award: raw.award
+  };
+}
+
 function validateStoredState(raw, pool) {
   if (!raw || typeof raw !== "object") return null;
   if (typeof raw.sessionId !== "string" || raw.sessionId === "") return null;
@@ -139,15 +319,40 @@ function validateStoredState(raw, pool) {
   if (!nickname.ok) return null;
   if (VALID_PHASES.indexOf(raw.phase) === -1) return null;
   if (!Array.isArray(raw.answers) || !Array.isArray(raw.questionOrder)) return null;
-  if (typeof raw.score !== "number" || !Number.isInteger(raw.score) || raw.score < 0) return null;
+  if (!Number.isInteger(raw.score) || raw.score < 0) return null;
   if (!Number.isInteger(raw.questionIndex) || raw.questionIndex < 0) return null;
+  if (typeof raw.elapsedMs !== "number" || !Number.isFinite(raw.elapsedMs) || raw.elapsedMs < 0) return null;
+  if (raw.startedAt != null && typeof raw.startedAt !== "string") return null;
+  if (raw.lastTickAt != null && typeof raw.lastTickAt !== "string") return null;
+  if (raw.finishedAt != null && typeof raw.finishedAt !== "string") return null;
 
   var answers = [];
+  var total = 0;
   for (var i = 0; i < raw.answers.length; i++) {
     var a = raw.answers[i];
-    if (!a || typeof a !== "object" || typeof a.questionId !== "number" ||
+    if (!a || typeof a !== "object" ||
+        typeof a.questionId !== "number" ||
+        typeof a.correct !== "boolean" ||
         !Number.isInteger(a.selected) || a.selected < 0 || a.selected > 2) return null;
-    answers.push({ questionId: a.questionId, selected: a.selected, correct: !!a.correct });
+    var points;
+    if (a.points === undefined || a.points === null) {
+      points = a.correct ? BONUS_BASE_POINTS : 0;
+    } else {
+      if (!Number.isInteger(a.points) || a.points < 0 || a.points > MAX_POINTS_PER_QUESTION) return null;
+      points = a.points;
+    }
+    total += points;
+    answers.push({ questionId: a.questionId, selected: a.selected, correct: a.correct, points: points });
+  }
+  // The score is a running total of the points on record — nothing else.
+  if (total !== raw.score) return null;
+
+  var bonus = null;
+  if (raw.phase === "bonus") {
+    bonus = validateBonus(raw.bonus, answers, raw.questionIndex);
+    if (!bonus) return null;
+  } else if (raw.bonus != null) {
+    return null; // a bonus round may only exist while one is being played
   }
 
   var state = {
@@ -158,14 +363,21 @@ function validateStoredState(raw, pool) {
     questionOrder: raw.questionOrder.slice(),
     answers: answers,
     score: raw.score,
+    bonus: bonus,
+    startedAt: typeof raw.startedAt === "string" ? raw.startedAt : null,
+    elapsedMs: raw.elapsedMs,
+    lastTickAt: typeof raw.lastTickAt === "string" ? raw.lastTickAt : null,
     lastAnswerAt: typeof raw.lastAnswerAt === "string" ? raw.lastAnswerAt : null,
     finishedAt: typeof raw.finishedAt === "string" ? raw.finishedAt : null
   };
 
   // Answers must line up with the phase: a question waiting to be answered has
-  // exactly one fewer answer than its index, feedback exactly one more.
-  if (state.phase === "question" && state.answers.length !== state.questionIndex) return null;
-  if (state.phase === "feedback" && state.answers.length !== state.questionIndex + 1) return null;
+  // exactly one fewer answer than its index, feedback and bonus exactly one more.
+  if (state.phase === "instructions" && (state.questionIndex !== 0 || answers.length !== 0)) return null;
+  if (state.phase === "question" && answers.length !== state.questionIndex) return null;
+  if (state.phase === "feedback" && answers.length !== state.questionIndex + 1) return null;
+  if (state.phase === "bonus" && answers.length !== state.questionIndex + 1) return null;
+  if (state.phase === "results" && answers.length !== state.questionIndex + 1) return null;
 
   // The nickname screen may legitimately have no contest yet.
   if (state.phase === "nickname") return state;
@@ -204,16 +416,25 @@ var GameLogic = {
   QUESTIONS_PER_CONTEST: QUESTIONS_PER_CONTEST,
   MAX_NICKNAME_LENGTH: MAX_NICKNAME_LENGTH,
   VALID_PHASES: VALID_PHASES,
+  MAX_POINTS_PER_QUESTION: MAX_POINTS_PER_QUESTION,
+  BONUS_MAX_ATTEMPTS: BONUS_MAX_ATTEMPTS,
+  BONUS_TOTAL_POINTS: BONUS_TOTAL_POINTS,
+  BONUS_MISS_POINTS: BONUS_MISS_POINTS,
+  ELAPSED_MAX_GAP_MS: ELAPSED_MAX_GAP_MS,
   isValidQuestion: isValidQuestion,
   shuffle: shuffle,
   selectQuestions: selectQuestions,
   validateNickname: validateNickname,
   createNewSessionId: createNewSessionId,
   createInitialState: createInitialState,
+  beginPlay: beginPlay,
   resolveOrder: resolveOrder,
   answerQuestion: answerQuestion,
+  resolveBonus: resolveBonus,
+  pointsForAttempt: pointsForAttempt,
   advance: advance,
   formatTimestamp: formatTimestamp,
+  formatDuration: formatDuration,
   validateStoredState: validateStoredState,
   loadState: loadState,
   saveState: saveState,

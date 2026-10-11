@@ -19,33 +19,123 @@
 
 <script>
 /* Verifies the game renders without horizontal overflow inside a true 360px
-   viewport. (Edge headless cannot be windowed below ~492px, so --window-size
-   screenshots of 360 are left-crops of a wider layout; this iframe is not.) */
-setTimeout(function () {
+   viewport, on every screen of the flow: nickname → instructions → question →
+   feedback → bonus (picking and resolved) → results.
+   (Edge headless cannot be windowed below ~492px, so --window-size screenshots
+   of 360 are left-crops of a wider layout; this iframe is not.) */
+(function () {
   var verdict = document.getElementById("verdict");
   var report = document.getElementById("report");
-  try {
-    var d = document.getElementById("f").contentDocument;
-    var card = d.querySelector(".card");
-    var title = d.querySelector(".title");
-    var offenders = [];
-    d.querySelectorAll("body *").forEach(function (el) {
-      var r = el.getBoundingClientRect();
-      if (r.right > 360.5) {
-        offenders.push(el.tagName + (el.id ? "#" + el.id : "") + " right=" + Math.round(r.right));
-      }
-    });
+  var f = document.getElementById("f");
+  var checks = [];
 
-    var checks = [
-      ["viewport is 360px wide", d.documentElement.clientWidth === 360, d.documentElement.clientWidth],
-      ["document does not scroll horizontally", d.documentElement.scrollWidth <= 360, d.documentElement.scrollWidth],
-      ["card fits inside the viewport", card.getBoundingClientRect().right <= 360, Math.round(card.getBoundingClientRect().right)],
-      ["title fits inside the card", title.scrollWidth <= title.clientWidth, title.scrollWidth + "/" + title.clientWidth],
-      ["nickname screen is visible", !d.getElementById("screen-nickname").hidden, d.getElementById("screen-nickname").hidden],
-      ["other screens are hidden", ["screen-question", "screen-feedback", "screen-results", "screen-welcome-back", "screen-error"].every(function (id) { return d.getElementById(id).hidden; }), "see html"],
-      ["page title is correct", d.title === "Halloween Contest", d.title],
-      ["no elements overflow right", offenders.length === 0, offenders.join(", ")]
-    ];
+  function rec(name, ok, detail) { checks.push([name, !!ok, String(detail)]); }
+  function D() { return f.contentDocument; }
+  function W() { return f.contentWindow; }
+  function $(id) { return D().getElementById(id); }
+  function app() { return W().HalloweenApp; }
+  function click(el) { if (el) el.dispatchEvent(new (W().MouseEvent)("click", { bubbles: true })); }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function offenders() {
+    var out = [];
+    D().querySelectorAll("body *").forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.right > 360.5) out.push(el.tagName + (el.id ? "#" + el.id : "") + " right=" + Math.round(r.right));
+    });
+    return out;
+  }
+
+  // Three overflow assertions plus the expected screen for a given step.
+  function checkScreen(step, view) {
+    var d = D();
+    var cardRight = Math.round(d.querySelector(".card").getBoundingClientRect().right);
+    rec(step + ": document does not scroll horizontally", d.documentElement.scrollWidth <= 360, d.documentElement.scrollWidth);
+    rec(step + ": card fits inside the viewport", cardRight <= 360, cardRight);
+    rec(step + ": no elements overflow right", offenders().length === 0, offenders().join(", "));
+    if (view) {
+      var visible = ["screen-nickname", "screen-instructions", "screen-question", "screen-feedback",
+        "screen-bonus", "screen-results", "screen-welcome-back", "screen-error"]
+        .filter(function (id) { return !$(id).hidden; });
+      rec(step + ": " + view + " is the only screen showing",
+        app().getView() === view && visible.length === 1, app().getView() + " / " + visible.join("+"));
+    }
+  }
+
+  async function run() {
+    try {
+      // Same origin as a played-through game, so start from a clean slate.
+      var loaded = new Promise(function (resolve) { f.onload = function () { setTimeout(resolve, 150); }; });
+      try { W().localStorage.clear(); } catch (e) { /* ignore */ }
+      f.src = "../index.html?cb=" + Date.now();
+      await loaded;
+      await wait(400);
+      var d = D();
+
+      checkScreen("nickname", "nickname");
+      rec("viewport is 360px wide", d.documentElement.clientWidth === 360, d.documentElement.clientWidth);
+      rec("page title is correct", d.title === "Halloween Contest", d.title);
+      rec("score bar is hidden before the contest starts", $("hud").hidden, $("hud").hidden);
+
+      $("nickname").value = "Bat";
+      click($("btn-start"));
+      await wait(50);
+      checkScreen("instructions", "instructions");
+      rec("instructions: score bar shows 0 points on question 1",
+        !$("hud").hidden && $("hud-points").textContent === "Total Points: 0" &&
+          $("hud-question").textContent === "Question 1/10",
+        $("hud-points").textContent + " / " + $("hud-question").textContent);
+
+      click($("btn-ready"));
+      await wait(50);
+      checkScreen("question", "question");
+      rec("question: three options fit the width",
+        D().querySelectorAll("#question-options .option").length === 3 && offenders().length === 0,
+        offenders().join(", "));
+
+      var q = app().getQuestions()[0];
+      click(D().querySelectorAll("#question-options .option")[q.correctIndex]);
+      await wait(50);
+      checkScreen("feedback", "feedback");
+
+      click($("btn-next"));
+      await wait(50);
+      var target = app().getState().bonus.target;
+      var bottles = D().querySelectorAll("#bonus-bottles .bottle");
+      click(bottles[target[0]]);
+      click(bottles[target[1]]);
+      await wait(50);
+      checkScreen("bonus (two bottles picked)", "bonus");
+      rec("bonus: three order slots are shown",
+        D().querySelectorAll("#bonus-slots .slot").length === 3,
+        D().querySelectorAll("#bonus-slots .slot").length);
+
+      click(bottles[target[2]]);
+      click($("btn-bonus-check"));
+      await wait(50);
+      checkScreen("bonus (resolved)", "bonus");
+      rec("bonus: a first-attempt match pays 5", app().getState().score === 5, app().getState().score);
+
+      click($("btn-bonus-next"));
+      await wait(50);
+      for (var i = 0; i < 9; i++) {
+        var st = app().getState();
+        var qq = app().getQuestions()[st.questionIndex];
+        click(D().querySelectorAll("#question-options .option")[(qq.correctIndex + 1) % 3]);
+        await wait(20);
+        if (app().getView() === "feedback") { click($("btn-next")); await wait(20); }
+      }
+      checkScreen("results", "results");
+      rec("results: total points, time and timestamp are all rendered",
+        $("results-score").textContent === "5 / 50" &&
+          $("results-time").textContent.indexOf("Total time: ") === 0 &&
+          $("results-finished").textContent.indexOf("Finished at") === 0 &&
+          D().getElementById("results-review").children.length === 10,
+        $("results-score").textContent + " / " + $("results-time").textContent + " / " +
+          D().getElementById("results-review").children.length + " rows");
+    } catch (e) {
+      rec("harness ran to completion", false, "threw: " + e.message);
+    }
 
     var failed = checks.filter(function (c) { return !c[1]; });
     verdict.textContent = (checks.length - failed.length) + " passed, " + failed.length + " failed";
@@ -54,11 +144,10 @@ setTimeout(function () {
       return (c[1] ? "PASS  " : "FAIL  ") + c[0] + "  [" + c[2] + "]";
     }).join("\n");
     document.title = "layout check: " + verdict.textContent;
-  } catch (e) {
-    verdict.textContent = "ERROR " + e.message;
-    verdict.className = "fail";
   }
-}, 900);
+
+  run();
+})();
 </script>
 </body>
 </html>

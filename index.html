@@ -15,6 +15,12 @@
 <p id="storage-banner" class="storage-banner" hidden>Progress can't be saved in this browser.</p>
 
 <main class="card">
+  <p id="hud" class="hud" hidden>
+    <span id="hud-points" class="hud-points"></span>
+    <span class="hud-sep" aria-hidden="true">-</span>
+    <span id="hud-question" class="hud-question"></span>
+  </p>
+
   <header class="masthead">
     <span class="deco" aria-hidden="true">🎃 👻 🦇</span>
     <h1 class="title">Halloween Contest</h1>
@@ -29,6 +35,22 @@
       <p id="nickname-note" class="field-note" hidden>The question set changed &mdash; starting over.</p>
     </div>
     <button id="btn-start" class="btn btn-primary" type="button">Start</button>
+  </section>
+
+  <section id="screen-instructions" class="screen" hidden>
+    <p class="progress">How to play</p>
+    <h2>Answer right, then poison the bottles.</h2>
+    <ul class="rules">
+      <li><b>10 Halloween questions</b>, each with three possible answers.</li>
+      <li>Answer <b>correctly</b> and you unlock the <b>poison bonus</b>: guess the order of
+        three bottles. The real order is hidden, and it changes on every question.</li>
+      <li>You get <b>three attempts</b> to match it exactly. Match on the 1st attempt and the
+        question is worth <b>5 points</b>, on the 2nd <b>3 points</b>, on the 3rd <b>2 points</b>.
+        Run out of attempts and you still keep <b>1 point</b>. Answer wrong and it is worth <b>0</b>.</li>
+      <li>Your <b>points</b> and the <b>question counter</b> stay at the top of the page throughout.</li>
+      <li>The final screen shows your <b>total points</b>, the <b>time</b> you took and <b>when</b> you finished.</li>
+    </ul>
+    <button id="btn-ready" class="btn btn-primary" type="button">I'm ready</button>
   </section>
 
   <section id="screen-welcome-back" class="screen" hidden>
@@ -54,10 +76,46 @@
     <button id="btn-next" class="btn btn-primary" type="button">Next</button>
   </section>
 
+  <section id="screen-bonus" class="screen" hidden>
+    <p class="progress">Poison bonus</p>
+    <h2>Match the hidden order</h2>
+    <p id="bonus-intro" class="bonus-intro">Click the bottles to build your order from left to right, then check it.
+      You cannot pick the same bottle twice.</p>
+    <p id="bonus-attempts" class="bonus-meta">Attempts left: <b>3</b></p>
+
+    <div id="bonus-bottles" class="bottles" role="group" aria-label="Poison bottles">
+      <button class="bottle" type="button" data-bottle="0" aria-pressed="false">
+        <span class="bottle-art bottle-green" data-glyph="☠" aria-hidden="true"></span>
+        <span class="bottle-label">Toxic green</span>
+      </button>
+      <button class="bottle" type="button" data-bottle="1" aria-pressed="false">
+        <span class="bottle-art bottle-purple" data-glyph="⚗" aria-hidden="true"></span>
+        <span class="bottle-label">Deep purple</span>
+      </button>
+      <button class="bottle" type="button" data-bottle="2" aria-pressed="false">
+        <span class="bottle-art bottle-red" data-glyph="☣" aria-hidden="true"></span>
+        <span class="bottle-label">Blood red</span>
+      </button>
+    </div>
+
+    <p id="bonus-order-label" class="slots-label">Your order</p>
+    <ol id="bonus-slots" class="slots" aria-labelledby="bonus-order-label"></ol>
+
+    <p id="bonus-verdict" class="verdict" aria-live="polite"></p>
+
+    <div class="actions">
+      <button id="btn-bonus-check" class="btn btn-primary" type="button">Check order</button>
+      <button id="btn-bonus-reset" class="btn btn-ghost" type="button">Clear</button>
+      <button id="btn-bonus-next" class="btn btn-primary" type="button" hidden>Next</button>
+    </div>
+  </section>
+
   <section id="screen-results" class="screen" hidden>
     <p class="progress">Finished</p>
     <h2 id="results-title"></h2>
+    <p class="score-label">Total points</p>
     <p id="results-score" class="score"></p>
+    <p id="results-time" class="elapsed"></p>
     <p id="results-finished" class="finished-at"></p>
     <ol id="results-review" class="review"></ol>
     <button id="btn-play-again" class="btn btn-primary" type="button">Play again</button>

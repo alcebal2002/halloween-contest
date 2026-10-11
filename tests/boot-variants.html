@@ -50,7 +50,8 @@
         return d.getElementById("error-message").textContent.trim().length > 20;
       }],
       ["no other screen is shown", function (d) {
-        return ["screen-nickname", "screen-question", "screen-feedback", "screen-results", "screen-welcome-back"]
+        return ["screen-nickname", "screen-instructions", "screen-question", "screen-feedback",
+                "screen-bonus", "screen-results", "screen-welcome-back"]
           .every(function (id) { return d.getElementById(id).hidden; });
       }],
       ["Start button is wired (screen responds)", function (d) {
@@ -65,6 +66,10 @@
       ["Start still starts a contest", function (d) {
         d.getElementById("nickname").value = "Reader";
         d.getElementById("btn-start").click();
+        return d.getElementById("screen-instructions").hidden === false;
+      }],
+      ["the rules screen starts the play", function (d) {
+        d.getElementById("btn-ready").click();
         return d.getElementById("screen-question").hidden === false;
       }]
     ]

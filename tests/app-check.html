@@ -8,18 +8,18 @@
   .pass { color: #86efac; }
   .fail { color: #fca5a5; }
   pre { white-space: pre-wrap; }
-  iframe { width: 640px; height: 660px; border: 1px solid #7c3aed; }
+  iframe { width: 640px; height: 700px; border: 1px solid #7c3aed; }
 </style>
 </head>
 <body>
-<h1>App checklist (plan Task 5, Step 3)</h1>
+<h1>App checklist (bonus round edition)</h1>
 <p id="verdict">running…</p>
 <pre id="report"></pre>
 <iframe id="f" src="../index.html" title="Halloween Contest under test"></iframe>
 
 <script>
 (function () {
-  var KEY = "halloweenContest.state.v1";
+  var KEY = "halloweenContest.state.v2";
   var f = document.getElementById("f");
   var results = [];
 
@@ -31,7 +31,8 @@
   function app() { return W().HalloweenApp; }
   function screenOn() {
     var on = [];
-    ["screen-nickname", "screen-welcome-back", "screen-question", "screen-feedback", "screen-results", "screen-error"].forEach(function (id) {
+    ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question", "screen-feedback",
+     "screen-bonus", "screen-results", "screen-error"].forEach(function (id) {
       if (!$(id).hidden) on.push(id);
     });
     return on.join("+") || "none";
@@ -48,6 +49,17 @@
     $("nickname").dispatchEvent(new (W().KeyboardEvent)("keydown", { key: "Enter", bubbles: true, cancelable: true }));
   }
   function options() { return $("question-options").querySelectorAll(".option"); }
+  function bottles() { return $("bonus-bottles").querySelectorAll(".bottle"); }
+  function hud() { return $("hud-points").textContent + " - " + $("hud-question").textContent; }
+  // A full order that can never equal the hidden target (rotate it by one).
+  function missOrder() {
+    var t = app().getState().bonus.target;
+    return [t[1], t[2], t[0]];
+  }
+  function pick(order) {
+    order.forEach(function (i) { click(bottles()[i]); });
+    click($("btn-bonus-check"));
+  }
 
   function step(name, fn) {
     try { fn(); } catch (e) { rec(name, false, "threw: " + e.message); }
@@ -75,18 +87,34 @@
       var longErr = !$("nickname-error").hidden;
       var focusOk = ($("nickname").focus(), D().activeElement === $("nickname"));
       rec("9. empty and 21-character nicknames are rejected inline, state unchanged",
-        emptyErr && longErr && focusOk && screenOn() === "screen-nickname" && !app().getState().sessionId,
-        "emptyErr=" + emptyErr + " longErr=" + longErr + " refocus=" + focusOk + " screen=" + screenOn());
+        emptyErr && longErr && focusOk && screenOn() === "screen-nickname" && !app().getState().sessionId &&
+          $("hud").hidden,
+        "emptyErr=" + emptyErr + " longErr=" + longErr + " refocus=" + focusOk + " screen=" + screenOn() +
+          " hudHidden=" + $("hud").hidden);
     });
 
     /* ---- 7 (part) + start ---- */
-    step("7. Enter in the nickname input starts the contest", function () {
+    step("7. Enter in the nickname input opens the instructions screen", function () {
       type("Bat");
       pressEnter();
       var st = app().getState();
-      rec("7. Enter in the nickname input starts the contest",
-        app().getView() === "question" && st.nickname === "Bat" && st.questionIndex === 0,
-        "view=" + app().getView() + " nickname=" + st.nickname);
+      rec("7. Enter in the nickname input opens the instructions screen",
+        app().getView() === "instructions" && screenOn() === "screen-instructions" &&
+          st.nickname === "Bat" && st.phase === "instructions" && st.questionIndex === 0,
+        "view=" + app().getView() + " screen=" + screenOn() + " phase=" + st.phase);
+    });
+
+    step("7b. instructions explain the rules, the points table and start the play", function () {
+      var rules = $("screen-instructions").querySelectorAll(".rules li");
+      var text = $("screen-instructions").textContent;
+      var explained = text.indexOf("10 Halloween questions") > -1 &&
+        text.indexOf("5 points") > -1 && text.indexOf("three attempts") > -1;
+      var hudShown = !$("hud").hidden && hud() === "Total Points: 0 - Question 1/10";
+      click($("btn-ready"));
+      var started = app().getView() === "question" && app().getState().phase === "question";
+      rec("7b. instructions explain the rules and 'I'm ready' starts question 1",
+        rules.length >= 4 && explained && hudShown && started,
+        "rules=" + rules.length + " explained=" + explained + " hud='" + hud() + "' view=" + app().getView());
     });
 
     step("3a. question screen shows 'Question 1 of 10' with exactly 3 options", function () {
@@ -97,8 +125,8 @@
         if (b.disabled || b.tabIndex < 0 || b.getAttribute("type") !== "button") focusable = false;
       });
       rec("3a. question screen shows 'Question 1 of 10' with exactly 3 focusable option buttons",
-        progress === "Question 1 of 10" && n === 3 && focusable,
-        progress + " / options=" + n + " focusable=" + focusable);
+        progress === "Question 1 of 10" && n === 3 && focusable && hud() === "Total Points: 0 - Question 1/10",
+        progress + " / options=" + n + " focusable=" + focusable + " hud='" + hud() + "'");
     });
 
     /* ---- immediate feedback ---- */
@@ -109,11 +137,11 @@
       var allDisabled = Array.prototype.every.call(fBtns, function (b) { return b.disabled; });
       var marked = fBtns[q.correctIndex].className.indexOf("is-correct") > -1;
       var st = app().getState();
-      rec("immediate feedback: 'Correct!', correct option marked, options locked, score 1",
+      rec("immediate feedback: 'Correct!', correct option marked, options locked, base point on the HUD",
         app().getView() === "feedback" && $("feedback-verdict").textContent === "Correct!" &&
-          allDisabled && marked && st.score === 1,
+          allDisabled && marked && st.score === 1 && hud() === "Total Points: 1 - Question 1/10",
         "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent +
-          " disabled=" + allDisabled + " marked=" + marked + " score=" + st.score);
+          " disabled=" + allDisabled + " marked=" + marked + " score=" + st.score + " hud='" + hud() + "'");
     });
 
     /* ---- 1. resume during feedback ---- */
@@ -122,8 +150,9 @@
       var name = $("welcome-back-name").textContent;
       var prog = $("welcome-back-progress").textContent;
       rec("1a. reload during feedback shows the welcome-back card with progress",
-        app().getView() === "welcomeBack" && name === "Welcome back, Bat" && prog === "Question 1 of 10",
-        "view=" + app().getView() + " name=" + name + " progress=" + prog);
+        app().getView() === "welcomeBack" && name === "Welcome back, Bat" && prog === "Question 1 of 10" &&
+          $("hud").hidden,
+        "view=" + app().getView() + " name=" + name + " progress=" + prog + " hudHidden=" + $("hud").hidden);
     });
 
     step("1b. Continue restores the verdict and Next button, score unchanged", function () {
@@ -134,14 +163,55 @@
         "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent + " score=" + st.score);
     });
 
-    /* ---- 2. resume mid-question ---- */
-    step("2. Next advances to question 2", function () {
+    /* ---- bonus round: first attempt pays 5 ---- */
+    step("2. Next on a correct answer opens the bonus round with three attempts", function () {
       click($("btn-next"));
       var st = app().getState();
-      rec("2a. Next advances to question 2",
-        app().getView() === "question" && st.questionIndex === 1 &&
-          $("question-progress").textContent === "Question 2 of 10",
-        "view=" + app().getView() + " progress=" + $("question-progress").textContent);
+      rec("2. Next on a correct answer opens the bonus round with three attempts",
+        app().getView() === "bonus" && screenOn() === "screen-bonus" && st.phase === "bonus" &&
+          st.bonus && st.bonus.attemptsUsed === 0 &&
+          $("bonus-attempts").textContent.indexOf("Attempts left") === 0 &&
+          $("btn-bonus-check").disabled === true &&
+          $("btn-bonus-next").hidden === true &&
+          hud() === "Total Points: 1 - Question 1/10",
+        "view=" + app().getView() + " phase=" + st.phase + " attempts='" + $("bonus-attempts").textContent +
+          "' checkDisabled=" + $("btn-bonus-check").disabled + " hud='" + hud() + "'");
+    });
+
+    step("2c. Check stays disabled until all three bottles are picked", function () {
+      var target = app().getState().bonus.target;
+      click(bottles()[target[0]]);
+      click(bottles()[target[1]]);
+      var half = $("btn-bonus-check").disabled;
+      var slotsFilled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
+      click(bottles()[target[2]]);
+      var full = $("btn-bonus-check").disabled;
+      rec("2c. Check stays disabled until all three bottles are picked",
+        half === true && slotsFilled === 2 && full === false && bottles()[target[2]].className.indexOf("is-picked") > -1,
+        "afterTwoDisabled=" + half + " slots=" + slotsFilled + " afterThreeDisabled=" + full);
+    });
+
+    step("2d. matching the order on the first attempt pays 5 points", function () {
+      click($("btn-bonus-check"));
+      var st = app().getState();
+      var verdict = $("bonus-verdict").textContent;
+      rec("2d. matching the order on the first attempt pays 5 points",
+        st.bonus.resolved === true && st.bonus.matched === true && st.bonus.attemptsUsed === 1 &&
+          st.answers[0].points === 5 && st.score === 5 &&
+          verdict.indexOf("Match on attempt 1") === 0 && verdict.indexOf("+5") > -1 &&
+          $("btn-bonus-next").hidden === false && hud() === "Total Points: 5 - Question 1/10",
+        "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed +
+          " points=" + st.answers[0].points + " score=" + st.score + " verdict='" + verdict +
+          "' hud='" + hud() + "'");
+    });
+
+    step("2e. the bonus Next button advances to question 2", function () {
+      click($("btn-bonus-next"));
+      rec("2e. the bonus Next button advances to question 2",
+        app().getView() === "question" && app().getState().questionIndex === 1 &&
+          $("question-progress").textContent === "Question 2 of 10" &&
+          hud() === "Total Points: 5 - Question 2/10",
+        "view=" + app().getView() + " progress=" + $("question-progress").textContent + " hud='" + hud() + "'");
     });
 
     await reload();
@@ -153,6 +223,55 @@
         "card said " + prog + " → view=" + app().getView() + " index=" + app().getState().questionIndex);
     });
 
+    /* ---- bonus round: three misses pay 1 ---- */
+    step("f1. a second correct answer opens a fresh bonus round", function () {
+      var st = app().getState();
+      var q = app().getQuestions()[st.questionIndex];
+      click(options()[q.correctIndex]);
+      click($("btn-next"));
+      var s2 = app().getState();
+      rec("f1. a second correct answer opens a fresh bonus round",
+        app().getView() === "bonus" && s2.bonus && s2.bonus.attemptsUsed === 0 && s2.bonus.resolved === false &&
+          hud() === "Total Points: 6 - Question 2/10",
+        "view=" + app().getView() + " attempts=" + (s2.bonus && s2.bonus.attemptsUsed) + " hud='" + hud() + "'");
+    });
+
+    step("f2. a miss leaves the bonus open with one attempt used", function () {
+      pick(missOrder());
+      var st = app().getState();
+      rec("f2. a miss leaves the bonus open with one attempt used",
+        st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && st.score === 6 &&
+          $("bonus-verdict").textContent === "No match - try again." &&
+          $("bonus-attempts").textContent.indexOf("2") > -1,
+        "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed + " score=" + st.score +
+          " verdict='" + $("bonus-verdict").textContent + "' attempts='" + $("bonus-attempts").textContent + "'");
+    });
+
+    step("f3. three misses settle the question at its 1 consolation point", function () {
+      pick(missOrder());
+      var st = app().getState();
+      var stillOpen = st.bonus.resolved === false;
+      var verdictBefore = $("bonus-verdict").textContent;
+      if (stillOpen) pick(missOrder());
+      var done = app().getState();
+      rec("f3. three misses settle the question at its 1 consolation point",
+        stillOpen && verdictBefore === "No match - try again." && done.bonus.resolved === true &&
+          done.bonus.matched === false && done.bonus.attemptsUsed === 3 &&
+          done.answers[1].points === 1 && done.score === 6 &&
+          $("bonus-verdict").textContent.indexOf("You still keep 1 point") > -1,
+        "stillOpen=" + stillOpen + " verdictBefore='" + verdictBefore + "' attempts=" + done.bonus.attemptsUsed +
+          " points=" + done.answers[1].points + " score=" + done.score +
+          " verdict='" + $("bonus-verdict").textContent + "'");
+    });
+
+    step("f4. the bonus Next button carries on to question 3", function () {
+      click($("btn-bonus-next"));
+      rec("f4. the bonus Next button carries on to question 3",
+        app().getView() === "question" && app().getState().questionIndex === 2 &&
+          $("question-progress").textContent === "Question 3 of 10",
+        "view=" + app().getView() + " progress=" + $("question-progress").textContent);
+    });
+
     /* ---- 4. start over ---- */
     await reload();
     step("4. Start over regenerates sessionId and clears progress", function () {
@@ -161,7 +280,7 @@
       var st = app().getState();
       rec("4. Start over regenerates sessionId and clears progress",
         st.sessionId !== before && st.answers.length === 0 && st.score === 0 && st.questionIndex === 0 &&
-          app().getView() === "question",
+          st.bonus === null && app().getView() === "question",
         "newSession=" + (st.sessionId !== before) + " answers=" + st.answers.length + " view=" + app().getView());
     });
 
@@ -172,11 +291,11 @@
       W().localStorage.setItem(KEY, JSON.stringify(raw));
     });
     await reload();
-    step("5. stale questionOrder discards progress and explains on the nickname screen", function () {
+    step("5. stale questionOrder discards progress, nickname pre-filled with an explanation", function () {
       var noteShown = !$("nickname-note").hidden;
       var preFilled = $("nickname").value;
       rec("5. stale questionOrder discards progress, nickname pre-filled with an explanation",
-        app().getView() === "nickname" && noteShown && preFilled === "Bat",
+        app().getView() === "nickname" && noteShown && preFilled === "Bat" && $("hud").hidden,
         "view=" + app().getView() + " note=" + noteShown + " prefilled='" + preFilled + "'");
     });
 
@@ -197,12 +316,13 @@
     step("5c. stored phase welcomeBack: Continue resumes the question", function () {
       type("Bat");
       pressEnter();
+      click($("btn-ready"));
       var raw = JSON.parse(W().localStorage.getItem(KEY));
       raw.phase = "welcomeBack";
       W().localStorage.setItem(KEY, JSON.stringify(raw));
     });
     await reload();
-    step("5c. stored phase welcomeBack: Continue resumes the question", function () {
+    step("5c. stored phase welcomeBack: Continue resumes the question, not a loop", function () {
       var onCard = app().getView() === "welcomeBack";
       click($("btn-continue"));
       rec("5c. stored phase welcomeBack: Continue resumes the question, not a loop",
@@ -216,6 +336,7 @@
     step("start a fresh run as 'Unlucky'", function () {
       type("Unlucky");
       pressEnter();
+      click($("btn-ready"));
       rec("start a fresh run as 'Unlucky'", app().getView() === "question", "view=" + app().getView());
     });
 
@@ -223,15 +344,18 @@
       answerWrong();
     }
     await wait(60);
-    step("8. zero-correct finish shows 0 / 10, a finish timestamp, and 10 review rows", function () {
+    step("8. zero-correct finish shows 0 / 50, time, timestamp and 10 review rows", function () {
       var st = app().getState();
       var score = $("results-score").textContent;
+      var time = $("results-time").textContent;
       var fin = $("results-finished").textContent;
       var rows = $("results-review").children.length;
-      rec("8. zero-correct finish shows 0 / 10, a finish timestamp, and 10 review rows",
-        app().getView() === "results" && st.score === 0 && score === "0 / 10" &&
-          fin.indexOf("Finished at") === 0 && rows === 10,
-        "view=" + app().getView() + " score='" + score + "' finished='" + fin + "' rows=" + rows);
+      rec("8. zero-correct finish shows 0 / 50, a total time, a finish timestamp and 10 review rows",
+        app().getView() === "results" && st.score === 0 && score === "0 / 50" &&
+          time.indexOf("Total time: ") === 0 && fin.indexOf("Finished at") === 0 && rows === 10 &&
+          hud() === "Total Points: 0 - Question 10/10",
+        "view=" + app().getView() + " score='" + score + "' time='" + time + "' finished='" + fin +
+          "' rows=" + rows + " hud='" + hud() + "'");
     });
 
     /* ---- 8b. resume on the results phase (spec §3: Continue returns to results) ---- */
@@ -240,8 +364,8 @@
       var prog = $("welcome-back-progress").textContent;
       click($("btn-continue"));
       rec("8b. reload after finishing: welcome-back says Finished, Continue returns to results",
-        prog.indexOf("Finished - score 0 / 10") === 0 && app().getView() === "results" &&
-          $("results-score").textContent === "0 / 10",
+        prog.indexOf("Finished - score 0 / 50") === 0 && app().getView() === "results" &&
+          $("results-score").textContent === "0 / 50",
         "card said '" + prog + "' → view=" + app().getView() + " score=" + $("results-score").textContent);
     });
 

@@ -6,13 +6,20 @@
   var storageAvailable = true;
   var state = null;
   var questions = [];
-  var view = "nickname";        // nickname | welcomeBack | question | feedback | results | error
+  var view = "nickname";        // nickname | instructions | welcomeBack | question | feedback | bonus | results | error
   var pendingPhase = null;      // stored phase to restore via Continue
   var lastFeedback = null;      // { correct: boolean, correctText: string }
+  var bonusSelection = [];      // bottles picked for the attempt in progress (never persisted)
   var note = "";                // "question set changed" note
   var el = {};
 
-  var SCREENS = ["screen-nickname", "screen-welcome-back", "screen-question", "screen-feedback", "screen-results", "screen-error"];
+  var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623"];   // matches the bottles in index.html
+  var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red"];
+  var SLOT_LABELS = ["1st", "2nd", "3rd"];
+
+  var SCREENS = ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question",
+    "screen-feedback", "screen-bonus", "screen-results", "screen-error"];
+  var HUD_VIEWS = ["instructions", "question", "feedback", "bonus", "results"];
 
   function $(id) { return document.getElementById(id); }
 
@@ -25,7 +32,9 @@
   function emptyState() {
     return {
       sessionId: "", nickname: "", phase: "nickname", questionIndex: 0,
-      questionOrder: [], answers: [], score: 0, lastAnswerAt: null, finishedAt: null
+      questionOrder: [], answers: [], score: 0, bonus: null,
+      startedAt: null, elapsedMs: 0, lastTickAt: null,
+      lastAnswerAt: null, finishedAt: null
     };
   }
 
@@ -57,10 +66,14 @@
   function boot() {
     el = {
       banner: $("storage-banner"),
+      hud: $("hud"),
+      hudPoints: $("hud-points"),
+      hudQuestion: $("hud-question"),
       nickname: $("nickname"),
       nicknameError: $("nickname-error"),
       nicknameNote: $("nickname-note"),
       start: $("btn-start"),
+      ready: $("btn-ready"),
       welcomeName: $("welcome-back-name"),
       welcomeProgress: $("welcome-back-progress"),
       continueBtn: $("btn-continue"),
@@ -73,8 +86,17 @@
       fOptions: $("feedback-options"),
       fVerdict: $("feedback-verdict"),
       next: $("btn-next"),
+      bonusAttempts: $("bonus-attempts"),
+      bonusIntro: $("bonus-intro"),
+      bonusBottles: $("bonus-bottles"),
+      bonusSlots: $("bonus-slots"),
+      bonusVerdict: $("bonus-verdict"),
+      bonusCheck: $("btn-bonus-check"),
+      bonusReset: $("btn-bonus-reset"),
+      bonusNext: $("btn-bonus-next"),
       rTitle: $("results-title"),
       rScore: $("results-score"),
+      rTime: $("results-time"),
       rFinished: $("results-finished"),
       rReview: $("results-review"),
       playAgain: $("btn-play-again"),
@@ -85,6 +107,10 @@
     if (!storage) {
       storageAvailable = false;
       el.banner.hidden = false;
+    } else {
+      // v1 states were scored as a count of correct answers, which the v2 rules
+      // cannot resume — drop the unreadable blob instead of leaving it behind.
+      try { storage.removeItem("halloweenContest.state.v1"); } catch (e) { /* ignore */ }
     }
 
     if (pool.filter(GameLogic.isValidQuestion).length === 0) {
@@ -143,9 +169,17 @@
     el.nickname.addEventListener("input", function () {
       el.nicknameError.hidden = true;
     });
+    el.ready.addEventListener("click", onReady);
     el.continueBtn.addEventListener("click", onContinue);
     el.startOver.addEventListener("click", onStartOver);
     el.next.addEventListener("click", onNext);
+    el.bonusCheck.addEventListener("click", onBonusCheck);
+    el.bonusReset.addEventListener("click", onBonusReset);
+    el.bonusNext.addEventListener("click", onNext);
+    el.bonusBottles.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest(".bottle") : null;
+      if (btn) onBottle(parseInt(btn.getAttribute("data-bottle"), 10));
+    });
     el.playAgain.addEventListener("click", onStartOver);
   }
 
@@ -162,8 +196,19 @@
     questions = GameLogic.resolveOrder(state, pool).questions;
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
+    bonusSelection = [];
     persist();
-    view = "question";
+    view = "instructions";
+    render();
+  }
+
+  function onReady() {
+    if (!state || state.phase !== "instructions") return;
+    var next = GameLogic.beginPlay(state, new Date());
+    if (next === state) return;
+    state = next;
+    persist();
+    view = state.phase;
     render();
   }
 
@@ -175,13 +220,17 @@
     // "welcomeBack" names a screen, never a playable phase — resume the question.
     if (view === "welcomeBack") view = "question";
     if (view === "feedback") restoreFeedback();
+    if (view === "bonus") bonusSelection = [];
     render();
   }
 
   function onStartOver() {
-    state = GameLogic.createInitialState(state.nickname || (el.nickname && el.nickname.value) || "", pool);
+    var nickname = (state && state.nickname) || (el.nickname && el.nickname.value) || "";
+    state = GameLogic.beginPlay(GameLogic.createInitialState(nickname, pool), new Date());
     questions = GameLogic.resolveOrder(state, pool).questions;
+    if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
+    bonusSelection = [];
     persist();
     view = "question";
     render();
@@ -203,10 +252,39 @@
   }
 
   function onNext() {
-    state = GameLogic.advance(state, questions);
+    var next = GameLogic.advance(state, questions, new Date());
+    if (next === state) return;
+    state = next;
     persist();
     lastFeedback = null;
-    view = state.phase; // "question" or "results"
+    bonusSelection = [];
+    view = state.phase; // instructions is unreachable here: "question", "bonus" or "results"
+    render();
+  }
+
+  function onBottle(index) {
+    if (view !== "bonus" || !state.bonus || state.bonus.resolved) return;
+    if (!Number.isInteger(index) || index < 0 || index >= state.bonus.target.length) return;
+    var picked = bonusSelection.indexOf(index);
+    if (picked !== -1) bonusSelection.splice(picked, 1);
+    else if (bonusSelection.length < state.bonus.target.length) bonusSelection.push(index);
+    render();
+  }
+
+  function onBonusReset() {
+    if (view !== "bonus" || !state.bonus || state.bonus.resolved) return;
+    bonusSelection = [];
+    render();
+  }
+
+  function onBonusCheck() {
+    if (view !== "bonus" || !state.bonus || state.bonus.resolved) return;
+    if (bonusSelection.length !== state.bonus.target.length) return;
+    var next = GameLogic.resolveBonus(state, bonusSelection.slice(), new Date());
+    if (next === state) return;
+    state = next;
+    bonusSelection = [];
+    persist();
     render();
   }
 
@@ -233,7 +311,34 @@
     }).join("");
   }
 
+  // Always renders every slot, filling the ones the player has already picked.
+  function slotMarkup(indices, size) {
+    var markup = "";
+    for (var i = 0; i < size; i++) {
+      var bottle = indices[i];
+      var filled = typeof bottle === "number";
+      var cls = "slot" + (filled ? " is-filled slot-" + bottle : "");
+      markup += '<li class="' + cls + '">' +
+        '<span class="slot-pos" aria-hidden="true">' + SLOT_LABELS[i] + "</span>" +
+        '<span class="slot-glyph"' + (filled ? "" : ' aria-hidden="true"') + ">" +
+        (filled ? BOTTLE_GLYPHS[bottle] : "&mdash;") + "</span>" +
+        (filled ? '<span class="sr-only">' + BOTTLE_NAMES[bottle] + "</span>" : "") +
+        "</li>";
+    }
+    return markup;
+  }
+
+  function updateHud() {
+    var visible = HUD_VIEWS.indexOf(view) !== -1 && questions.length > 0;
+    el.hud.hidden = !visible;
+    if (!visible) return;
+    var number = Math.min(state.questionIndex + 1, questions.length);
+    el.hudPoints.textContent = "Total Points: " + state.score;
+    el.hudQuestion.textContent = "Question " + number + "/" + questions.length;
+  }
+
   function render() {
+    updateHud();
     SCREENS.forEach(function (id) { $(id).hidden = true; });
 
     if (view === "nickname") {
@@ -242,10 +347,16 @@
       return;
     }
 
+    if (view === "instructions") {
+      $("screen-instructions").hidden = false;
+      return;
+    }
+
     if (view === "welcomeBack") {
+      var maxPoints = questions.length * GameLogic.MAX_POINTS_PER_QUESTION;
       el.welcomeName.textContent = "Welcome back, " + state.nickname;
       el.welcomeProgress.textContent = (pendingPhase === "results")
-        ? "Finished - score " + state.score + " / " + questions.length
+        ? "Finished - score " + state.score + " / " + maxPoints
         : "Question " + (state.questionIndex + 1) + " of " + questions.length;
       $("screen-welcome-back").hidden = false;
       return;
@@ -278,9 +389,15 @@
       return;
     }
 
+    if (view === "bonus") {
+      renderBonus();
+      return;
+    }
+
     if (view === "results") {
       el.rTitle.textContent = state.nickname + ", here are your results";
-      el.rScore.textContent = state.score + " / " + questions.length;
+      el.rScore.textContent = state.score + " / " + (questions.length * GameLogic.MAX_POINTS_PER_QUESTION);
+      el.rTime.textContent = "Total time: " + (GameLogic.formatDuration(state.elapsedMs) || "0s");
       el.rFinished.textContent = GameLogic.formatTimestamp(state.finishedAt)
         ? "Finished at " + GameLogic.formatTimestamp(state.finishedAt)
         : "";
@@ -288,8 +405,9 @@
         var q = questions[i] || null;
         var correctText = q ? q.options[q.correctIndex] : "?";
         var yourText = q ? q.options[a.selected] : "?";
+        var tag = a.correct ? "\u2713 +" + a.points + " pts" : "\u2717 0 pts";
         return "<li class=\"" + (a.correct ? "ok" : "bad") + "\">" +
-          '<span class="verdict-tag" aria-hidden="true">' + (a.correct ? "\u2713 correct" : "\u2717 wrong") + "</span>" +
+          '<span class="verdict-tag" aria-hidden="true">' + tag + "</span>" +
           '<p class="q">' + (i + 1) + ". " + (q ? esc(q.text) : "Question removed") + "</p>" +
           '<p class="a">Your answer: <b>' + esc(yourText) + "</b></p>" +
           (a.correct ? "" : '<p class="a">Correct: <b>' + esc(correctText) + "</b></p>") +
@@ -300,6 +418,57 @@
     }
 
     $("screen-error").hidden = false;
+  }
+
+  function renderBonus() {
+    // A stale view (state already moved on) falls back to a playable screen.
+    if (state.phase !== "bonus" || !state.bonus) {
+      view = state.phase === "bonus" ? "question" : state.phase;
+      render();
+      return;
+    }
+
+    var bonus = state.bonus;
+    var entry = state.answers[state.questionIndex] || { points: 0 };
+    var size = bonus.target.length;
+    var indices = bonus.resolved ? bonus.target : bonusSelection;
+
+    // Once the round is settled the "how to pick" hint no longer applies.
+    el.bonusIntro.hidden = bonus.resolved;
+    el.bonusAttempts.innerHTML = bonus.resolved
+      ? "Attempts used: <b>" + bonus.attemptsUsed + "</b> of " + GameLogic.BONUS_MAX_ATTEMPTS
+      : "Attempts left: <b>" + (GameLogic.BONUS_MAX_ATTEMPTS - bonus.attemptsUsed) + "</b>";
+
+    el.bonusSlots.innerHTML = slotMarkup(indices, size);
+
+    if (bonus.resolved) {
+      el.bonusVerdict.className = "verdict " + (bonus.matched ? "is-correct" : "is-warn");
+      el.bonusVerdict.textContent = bonus.matched
+        ? "Match on attempt " + bonus.attemptsUsed + "! +" + entry.points + " points for this question."
+        : "No match - the order was " + bonus.target.map(function (i) { return BOTTLE_NAMES[i]; }).join(" > ") +
+          ". You still keep 1 point.";
+      el.bonusCheck.hidden = true;
+      el.bonusReset.hidden = true;
+      el.bonusNext.hidden = false;
+    } else {
+      el.bonusVerdict.className = "verdict" + (bonus.attemptsUsed > 0 ? " is-wrong" : "");
+      el.bonusVerdict.textContent = bonus.attemptsUsed > 0 ? "No match - try again." : "";
+      el.bonusCheck.hidden = false;
+      el.bonusReset.hidden = false;
+      el.bonusNext.hidden = true;
+      el.bonusCheck.disabled = bonusSelection.length !== size;
+      el.bonusReset.disabled = bonusSelection.length === 0;
+    }
+
+    Array.prototype.forEach.call(el.bonusBottles.querySelectorAll(".bottle"), function (btn) {
+      var index = parseInt(btn.getAttribute("data-bottle"), 10);
+      var picked = bonusSelection.indexOf(index) !== -1;
+      btn.classList.toggle("is-picked", picked);
+      btn.setAttribute("aria-pressed", picked ? "true" : "false");
+      btn.disabled = bonus.resolved || (!picked && bonusSelection.length >= size);
+    });
+
+    $("screen-bonus").hidden = false;
   }
 
   window.HalloweenApp = {

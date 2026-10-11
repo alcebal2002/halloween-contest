@@ -218,3 +218,74 @@ Approach A — a screen-state machine with one persisted state object as the sin
 truth; `render()` shows the screen matching `state.phase`. Rejected alternatives: independent
 `localStorage` keys per field (can drift apart across writes or tabs) and a minimal inline
 script (no separation, tangled DOM logic; conflicts with the split-file requirement).
+
+---
+
+## 10. Amendment — poison bonus round, score bar, elapsed time (2026-10-11)
+
+Sections 1–9 describe the shipped v1. This section records the approved v2 additions and is
+the current contract wherever the two disagree.
+
+### 10.1 Flow
+
+`nickname → instructions → question → feedback → bonus? → … → results`
+
+- **Instructions** appears only after a fresh **Start**. **Continue** (resume), **Play again**
+  and **Start over** go straight to question 1.
+- **Bonus** follows the feedback screen when — and only when — the answer was correct. A wrong
+  answer skips it entirely.
+
+### 10.2 Scoring
+
+| Outcome | Points for the question |
+|---|---|
+| Correct, matched the bottle order on the 1st attempt | **5** |
+| Correct, matched on the 2nd attempt | **3** |
+| Correct, matched on the 3rd attempt | **2** |
+| Correct, no match after 3 attempts | **1** |
+| Wrong answer | **0** |
+
+Maximum **50 points** (10 questions × 5). Internally a correct answer pays 1 point at answer
+time and the resolved bonus adds the remainder (4 / 2 / 1 / 0), so `score` is always the sum of
+`answers[].points` — that equality is enforced by `validateStoredState`.
+
+### 10.3 Bonus round interaction
+
+Three bottles — toxic green ☠, deep purple ⚗, blood red ☣ (colour is never the only signal).
+The player clicks bottles to build an order left to right, **Check order** compares it with the
+hidden permutation, **Clear** resets the picks. A miss leaves the round open with one attempt
+consumed; the round settles on a match or on the third miss, then the summary replaces the
+controls and **Next** continues. The hidden order is shown once the round settles.
+
+### 10.4 Score bar
+
+`#hud` sits at the top of the card from the instructions screen through to the results, and is
+hidden on the nickname and welcome-back screens. Format: `Total Points: 10 - Question 3/10`.
+While a bonus is unresolved it shows the score before that bonus is settled.
+
+### 10.5 Elapsed time
+
+`startedAt` (Start), `elapsedMs` (accumulated), `lastTickAt` (last transition). Play time is
+summed across every transition; a gap longer than **5 minutes** is ignored, so closing the tab
+and coming back does not inflate the total. `finishedAt` is stamped when the results screen
+opens, not at the last answer. The results screen shows `formatDuration(elapsedMs)`
+(e.g. `6m 12s`) and the finish timestamp.
+
+### 10.6 Storage
+
+`STORAGE_KEY` is **`halloweenContest.state.v2`** — v1 states are not migrated (the old `score`
+meant "correct answers", which cannot be mapped onto the new table). The legacy v1 key is
+deleted on boot. New fields: `bonus { questionId, target, attemptsUsed, matched, resolved,
+award }`, `startedAt`, `elapsedMs`, `lastTickAt`; `answers[]` gains `points`. New phases:
+`instructions`, `bonus`. Validation additionally rejects a bonus outside the bonus phase, a
+non-permutation target, more than three attempts, and any score that disagrees with the sum of
+the recorded points.
+
+### 10.7 Tests
+
+`tests/test-suite.js` (Node and browser, 51 assertions) covers the points table, bonus
+validation, elapsed-time accumulation and the gap cap, plus everything in §8.
+`tests/app-check.html` (24 checks) drives the real page through instructions, HUD, both bonus
+outcomes, resume from every phase, and the results screen. `tests/layout-check.html` (36
+checks) repeats the 360px overflow assertion at every step of the flow.
+`tests/make-nostorage.js` regenerates the `localStorage`-blocked copy of `index.html`.
