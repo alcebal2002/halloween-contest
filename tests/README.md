@@ -8,7 +8,7 @@ manual one.
 | --- | --- | --- |
 | `node tests/run-tests.js` | Node ≥ 14, from the project root | `92 passed, 0 failed`, exit code `0` |
 | `tests/test.html` | open directly (`file://`) or serve the folder | `92 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `39 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `40 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `37 passed, 0 failed` |
 | `tests/stats-check.html` | serve the folder, open `/tests/stats-check.html` | `22 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
@@ -49,7 +49,8 @@ profile has to be fresh.
   `js/questions.js` has broken.
 - **`app-check.html`** — drives the real `index.html` in an iframe: nickname validation, the
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
-  four-bottle poison tray with distinct neon colours and fills, immediate
+  four-bottle poison tray (a glossy neon vial, drawn once and reused, with the
+  colour named under each bottle and a dim empty vial in every unfilled order slot), immediate
   feedback, the bonus round (open → pick four bottles → first-attempt match pays 5 → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following
   round, the green flash on a partial match (locked controls, then empty slots for the next

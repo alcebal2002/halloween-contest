@@ -251,8 +251,10 @@ time and the resolved bonus adds the remainder (4 / 2 / 1 / 0), so `score` is al
 
 ### 10.3 Bonus round interaction
 
-Four poison bottles on the tray — toxic green ☠, deep purple ⚗, blood red ☣ and cyanide cyan ⚱ —
-each a simple neon vial, with the caption naming the colour (colour is never the only signal).
+Four poison bottles on the tray — toxic green, deep purple, blood red and cyanide cyan — each a
+simple glossy neon vial (a round glass body, a short neck and a cork) drawn once as `#vial` and
+reused everywhere, with the caption naming the colour (colour is never the only signal). The
+player's order shows the same vial in each slot, and an unfilled slot is a dim, empty bottle.
 The player clicks bottles to build an order left to right, **Check order** compares it with the
 hidden permutation, **Clear** resets the picks. A miss leaves the round open with one attempt
 consumed; the round settles on a match or on the third miss, then the summary replaces the

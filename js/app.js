@@ -25,8 +25,8 @@
   var el = {};
 
   // Toxic green, deep purple, blood red, cyanide cyan — same order as the poison
-  // bottles in index.html.
-  var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623", "\u26b1"];
+  // bottles in index.html. Each order slot carries the bottle's name for screen
+  // readers, so the colour is never the only cue.
   var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red", "Cyanide cyan"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
 
@@ -374,7 +374,7 @@
         (rings && rings[i] && filled ? " is-correct-pos" : "");
       markup += '<li class="' + cls + '">' +
         '<span class="slot-glyph"' + (filled ? "" : ' aria-hidden="true"') + ">" +
-        (filled ? BOTTLE_GLYPHS[bottle] : "&mdash;") + "</span>" +
+        '<svg class="vial" viewBox="0 0 44 64" aria-hidden="true" focusable="false"><use href="#vial"></use></svg>' +
         (filled ? '<span class="sr-only">' + BOTTLE_NAMES[bottle] + "</span>" : "") +
         "</li>";
     }

@@ -222,39 +222,47 @@
           "' checkDisabled=" + $("btn-bonus-check").disabled + " hud='" + hud() + "'");
     });
 
-    step("2a. the tray shows four neon poison bottles with distinct colours, fills and glyphs", function () {
+    step("2a. the tray shows four neon poison bottles in distinct colours", function () {
       var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
       var labels = Array.prototype.map.call(arts, function (a) {
         return a.parentNode.querySelector(".bottle-label").textContent;
       });
-      var glyphs = Array.prototype.map.call(arts, function (a) { return a.getAttribute("data-glyph"); });
-      // Each bottle is outlined and filled in its own neon colour so the vial reads
-      // as liquid, and its label names that colour (colour is never the only cue).
-      var borders = Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).borderTopColor; });
-      var fills = Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).backgroundColor; });
-      var distinct = {}; borders.forEach(function (c) { distinct[c] = true; });
-      var glyphSet = {}; glyphs.forEach(function (g) { glyphSet[g] = true; });
-      var filled = fills.every(function (c) { return c !== "rgba(0, 0, 0, 0)" && c !== "transparent"; });
-      rec("2a. the tray shows four neon poison bottles with distinct colours, fills and glyphs",
+      // Each bottle is drawn in its own neon colour from the shared vial, and its
+      // label names that colour, so colour is never the only cue (spec §10.3).
+      var colors = Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).color; });
+      var distinct = {}; colors.forEach(function (c) { distinct[c] = true; });
+      var vials = Array.prototype.every.call(arts, function (a) {
+        var use = a.querySelector("svg.vial > use");
+        return !!use && (use.getAttribute("href") || use.getAttribute("xlink:href")) === "#vial";
+      });
+      rec("2a. the tray shows four neon poison bottles in distinct colours",
         arts.length === 4 && labels.join(",") === "Toxic green,Deep purple,Blood red,Cyanide cyan" &&
-          Object.keys(glyphSet).length === 4 && Object.keys(distinct).length === 4 && filled,
-        "labels=" + labels.join("/") + " glyphs=" + glyphs.join("/") + " fills=" + fills.join(" | ") +
-          " borders=" + borders.join(" | "));
+          Object.keys(distinct).length === 4 && vials,
+        "labels=" + labels.join("/") + " colors=" + colors.join(" | "));
     });
 
-    step("2a2. the creature emoji are gone; each bottle paints its poison glyph in its own colour", function () {
-      var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
-      var creature = /[\uD83D\uDD77\uD83C\uDF83\uD83D\uDC7B\uD83E\uDD87]/;   // spider, pumpkin, ghost, bat
-      var ok = Array.prototype.every.call(arts, function (a) {
-        var cs = W().getComputedStyle(a);
-        var glyph = W().getComputedStyle(a, "::after").content;
-        return !creature.test(a.getAttribute("data-glyph")) &&
-          glyph.indexOf(a.getAttribute("data-glyph")) > -1 && cs.color === cs.borderTopColor;
+    step("2a1. the order starts as four empty slot bottles", function () {
+      var slots = $("bonus-slots").querySelectorAll(".slot");
+      var empty = 0;
+      Array.prototype.forEach.call(slots, function (s) {
+        var g = s.querySelector(".slot-glyph");
+        if (s.className.indexOf("is-filled") === -1 && g && g.querySelector("svg.vial > use")) empty++;
       });
-      rec("2a2. the creature emoji are gone; each bottle paints its poison glyph in its own colour",
+      rec("2a1. the order starts as four empty slot bottles",
+        slots.length === 4 && empty === 4,
+        "slots=" + slots.length + " emptyBottles=" + empty);
+    });
+
+    step("2a2. the bottles are plain glossy glass, with no creature emoji or poison glyph", function () {
+      var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
+      // spider, pumpkin, ghost, bat and the old poison glyphs
+      var creature = /[\uD83D\uDD77\uD83C\uDF83\uD83D\uDC7B\uD83E\uDD87\u2620\u2697\u2623\u26B1]/;
+      var ok = Array.prototype.every.call(arts, function (a) {
+        return a.textContent === "" && !creature.test(a.textContent) && !a.hasAttribute("data-glyph");
+      });
+      rec("2a2. the bottles are plain glossy glass, with no creature emoji or poison glyph",
         arts.length === 4 && ok,
-        "glyphs=" + Array.prototype.map.call(arts, function (a) { return a.getAttribute("data-glyph"); }).join("/") +
-          " colors=" + Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).color; }).join("/"));
+        "texts=" + Array.prototype.map.call(arts, function (a) { return "'" + a.textContent + "'"; }).join("/"));
     });
 
     step("2c. Check stays disabled until all four bottles are picked", function () {
@@ -271,31 +279,32 @@
         "afterThreeDisabled=" + half + " slots=" + slotsFilled + " afterFourDisabled=" + full);
     });
 
-    step("2c2. each filled slot shows the same bottle glyph as its tray tile", function () {
+    step("2c2. each filled slot shows a bottle in its tray tile's colour", function () {
       var target = app().getState().bonus.target;
       var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
       var slots = $("bonus-slots").querySelectorAll(".slot");
       var mismatched = 0, detail = "";
       for (var i = 0; i < slots.length; i++) {
-        var tray = arts[target[i]].getAttribute("data-glyph");
-        var inSlot = slots[i].querySelector(".slot-glyph").textContent;
-        if (tray !== inSlot) mismatched++;
+        var tray = W().getComputedStyle(arts[target[i]]).color;
+        var glyph = slots[i].querySelector(".slot-glyph");
+        var inSlot = W().getComputedStyle(glyph).color;
+        if (tray !== inSlot || !glyph.querySelector("svg.vial > use")) mismatched++;
         detail += (i + 1) + ":" + inSlot + " ";
       }
-      rec("2c2. each filled slot shows the same bottle glyph as its tray tile",
+      rec("2c2. each filled slot shows a bottle in its tray tile's colour",
         slots.length === 4 && $("bonus-slots").querySelectorAll(".slot.is-filled").length === 4 &&
           mismatched === 0,
         "mismatched=" + mismatched + " slots=" + detail);
     });
 
-    step("2c3. a filled slot paints its glyph in that bottle's neon colour", function () {
+    step("2c3. a filled slot lights its bottle in that bottle's neon colour", function () {
       var glyph = $("bonus-slots").querySelector(".slot.is-filled.slot-0 .slot-glyph");
       var green = "rgb(34, 197, 94)";
       var color = glyph ? W().getComputedStyle(glyph).color : "";
-      // slot-0 is the toxic-green bottle, so its slot glyph must carry that colour.
-      rec("2c3. a filled slot paints its glyph in that bottle's neon colour",
-        !!glyph && glyph.textContent.indexOf("\u2620") > -1 && color === green,
-        "color=" + color + " text=" + (glyph ? glyph.textContent : "none"));
+      // slot-0 is the toxic-green bottle, so its slot bottle carries that colour.
+      rec("2c3. a filled slot lights its bottle in that bottle's neon colour",
+        !!glyph && !!glyph.querySelector("svg.vial > use") && color === green,
+        "color=" + color);
     });
 
     step("2d. matching the order on the first attempt pays 5 points", function () {
