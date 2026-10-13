@@ -49,8 +49,8 @@ profile has to be fresh.
   `js/questions.js` has broken.
 - **`app-check.html`** — drives the real `index.html` in an iframe: nickname validation, the
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
-  four-character tray with distinct colour rings and no fill, immediate
-  feedback, the bonus round (open → pick four characters → first-attempt match pays 5 → Next,
+  four-bottle poison tray with distinct neon colours and fills, immediate
+  feedback, the bonus round (open → pick four bottles → first-attempt match pays 5 → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following
   round, the green flash on a partial match (locked controls, then empty slots for the next
   attempt), the reload that starts that round from empty slots, resume from the welcome-back
@@ -66,7 +66,7 @@ profile has to be fresh.
   Every save is answered from a stub, so no test
   run can reach the live project.
 - **`layout-check.html`** — renders the page in a genuine 360px viewport and walks the whole
-  flow (nickname → instructions → question → feedback → bonus with two characters picked → bonus
+  flow (nickname → instructions → question → feedback → bonus with two bottles picked → bonus
   resolved → results), asserting at every stop that the document does not scroll sideways, the
   card fits, and no element overflows. It also checks the score bar is hidden before the
   contest starts and that each step shows exactly one screen. It blanks the

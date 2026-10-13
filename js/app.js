@@ -24,9 +24,10 @@
   var note = "";                // "question set changed" note
   var el = {};
 
-  // Spider, pumpkin, ghost, bat — same order as the tiles in index.html.
-  var BOTTLE_GLYPHS = ["\uD83D\uDD77\uFE0F", "\uD83C\uDF83", "\uD83D\uDC7B", "\uD83E\uDD87"];
-  var BOTTLE_NAMES = ["Spider", "Pumpkin", "Ghost", "Bat"];
+  // Toxic green, deep purple, blood red, cyanide cyan — same order as the poison
+  // bottles in index.html.
+  var BOTTLE_GLYPHS = ["\u2620", "\u2697", "\u2623", "\u26b1"];
+  var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red", "Cyanide cyan"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
 
   var SCREENS = ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question",

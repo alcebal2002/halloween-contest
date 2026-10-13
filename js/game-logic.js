@@ -14,7 +14,7 @@ var BONUS_MISS_POINTS = 1;           // correct answer, three failed attempts
 var BONUS_BASE_POINTS = 1;           // paid by the answer itself, before the bonus
 var MAX_POINTS_PER_QUESTION = BONUS_TOTAL_POINTS[0];
 var BONUS_MAX_ATTEMPTS = 3;
-var BONUS_COLOR_COUNT = 4;           // Halloween characters in play (tray order 0..3)
+var BONUS_COLOR_COUNT = 4;           // poison bottles in play (tray order 0..3)
 
 /* A gap longer than this (closed tab, idle, resumed the next day) is not counted
    as play time, so the elapsed total always reads like a plausible sitting. */
