@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Halloween Contest — stats checklist</title>
+<style>
+  body { background: #0d0a14; color: #f5efe6; font-family: monospace; padding: 20px; }
+  .pass { color: #86efac; }
+  .fail { color: #fca5a5; }
+  pre { white-space: pre-wrap; }
+  iframe { width: 760px; height: 640px; border: 1px solid #7c3aed; }
+  iframe.narrow { width: 360px; height: 560px; }
+</style>
+</head>
+<body>
+<h1>Leaderboard checklist (stats.html)</h1>
+<p id="verdict">running…</p>
+<pre id="report"></pre>
+<iframe id="f" title="stats.html under test"></iframe>
+<iframe id="narrow" class="narrow" title="stats.html at 360px"></iframe>
+
+<script>
+(function () {
+  var results = [];
+  function rec(name, ok, detail) { results.push({ name: name, ok: !!ok, detail: String(detail) }); }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function W(frame) { return frame.contentWindow; }
+  function D(frame) { return frame.contentDocument; }
+  function $(frame, id) { return D(frame).getElementById(id); }
+  function click(el, win) { el.dispatchEvent(new win.MouseEvent("click", { bubbles: true })); }
+  var f = document.getElementById("f");
+  var narrow = document.getElementById("narrow");
+
+  // Fixture rows: ten distinct names in score order, one of which is markup,
+  // plus a second run for the same first name at a much lower score.
+  var NAMES = ["Bat", "Cat", "Dog", "Rat", "Owl",
+               "<img src=x onerror=alert(1)>", "Crow", "Fox", "Wolf", "Toad"];
+  function rawRows() {
+    var out = [];
+    for (var i = 0; i < NAMES.length; i++) {
+      out.push({
+        session_id: "s" + i,
+        nickname: NAMES[i],
+        total_score: 100 - i,
+        correct_count: 8 - (i % 4),
+        bonuses_matched: i % 3,
+        elapsed_ms: 60000 + i * 1000,
+        finished_at: "2026-10-13T12:0" + (i % 10) + ":00.000Z",
+        created_at: "2026-10-13T13:00:00.000Z"
+      });
+    }
+    out.push({
+      session_id: "s99", nickname: "Bat", total_score: 5,
+      correct_count: 1, bonuses_matched: 0, elapsed_ms: 30000,
+      finished_at: "2026-10-13T14:00:00.000Z",
+      created_at: "2026-10-13T14:00:00.000Z"
+    });
+    return out;
+  }
+
+  function ranked() { return W(f).Leaderboard.rankRows(rawRows(), 10); }
+
+  // The <base> goes in first inside <head>, ahead of the stylesheet link, so
+  // css/style.css resolves to the project root rather than /tests/css/.
+  function buildPage() {
+    return fetch("../stats.html?cb=" + Date.now())
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        return html.replace("<head>", "<head><base href=\"../\">");
+      });
+  }
+
+  function load(frame) {
+    return buildPage().then(function (html) {
+      var done = new Promise(function (resolve) {
+        frame.onload = function () { setTimeout(resolve, 150); };
+      });
+      frame.srcdoc = html;
+      return done;
+    });
+  }
+
+  function cellText(tr, index) { return tr.cells[index].textContent; }
+
+  async function run() {
+    /* --- 1..9: the real page, rendered by Leaderboard.render --- */
+    await load(f);
+    var d = D(f), win = W(f);
+
+    rec("1. title is Halloween Contest Leaderboard",
+      d.title === "Halloween Contest Leaderboard", "title=" + d.title);
+
+    var bg = win.getComputedStyle(d.body).backgroundColor;
+    rec("2. the page loads its stylesheet through the injected base",
+      bg === "rgb(13, 10, 20)", "body background=" + bg);
+
+    win.Leaderboard.render(d, { state: "ready", rows: ranked(), status: "Updated 18:42:07" });
+    var rows = d.querySelectorAll("#lb-body tr");
+    rec("3. eleven rows render — ten names plus one repeat", rows.length === 11,
+      "rows=" + rows.length);
+
+    var ranks = [];
+    for (var i = 0; i < rows.length; i++) {
+      if (!rows[i].classList.contains("is-repeat")) ranks.push(cellText(rows[i], 0));
+    }
+    rec("4. distinct rows are numbered 1 to 10",
+      ranks.join(",") === "1,2,3,4,5,6,7,8,9,10", "ranks=" + ranks.join(","));
+
+    // The repeat sits directly after its own best row (spec §6.4), so it is
+    // rows[1] — the last row of the board is the tenth distinct name.
+    var repeatRow = rows[1];
+    rec("5. the repeat row is greyed, sits beneath its own name and has no rank",
+      cellText(rows[0], 1) === "Bat" &&
+        repeatRow.classList.contains("is-repeat") && cellText(repeatRow, 0) === "" &&
+        cellText(repeatRow, 1) === "Bat",
+      "above='" + cellText(rows[0], 1) + "' class=" + repeatRow.className +
+        " rank='" + cellText(repeatRow, 0) + "' player='" + cellText(repeatRow, 1) + "'");
+
+    var xssCell = null;
+    for (var j = 0; j < rows.length; j++) {
+      if (cellText(rows[j], 1).indexOf("<img") === 0) xssCell = rows[j].cells[1];
+    }
+    rec("6. a nickname containing markup stays literal text",
+      xssCell !== null && xssCell.textContent === "<img src=x onerror=alert(1)>" &&
+        xssCell.querySelector("img") === null,
+      xssCell ? "cell='" + xssCell.textContent + "' imgs=" + xssCell.querySelectorAll("img").length
+              : "no markup nickname rendered");
+
+    var allLabelled = true;
+    d.querySelectorAll("#lb-body td").forEach(function (td) {
+      if (!td.getAttribute("data-label")) allLabelled = false;
+    });
+    rec("7. every cell carries a non-empty data-label", allLabelled, "allLabelled=" + allLabelled);
+
+    // Fixture row 0 is Bat: score 100, correct 8 - (0 % 4) = 8, bonus 0 % 3 = 0,
+    // elapsed 60000ms. The timestamp is compared against GameLogic rather than a
+    // literal, because toLocaleString() depends on the machine's locale — the
+    // point of the check is that the right field lands in the right column.
+    var first = rows[0];
+    rec("8. score, correct, bonus, time and finished land in the right columns",
+      cellText(first, 2) === "100" && cellText(first, 3) === "8" &&
+        cellText(first, 4) === "0" && cellText(first, 5) === "1m 00s" &&
+        cellText(first, 6) === win.GameLogic.formatTimestamp("2026-10-13T12:00:00.000Z"),
+      "score='" + cellText(first, 2) + "' correct='" + cellText(first, 3) +
+        "' bonus='" + cellText(first, 4) + "' time='" + cellText(first, 5) +
+        "' finished='" + cellText(first, 6) + "'");
+
+    // A board re-renders with no catch around it, so a malformed row must coerce
+    // rather than throw. elapsed_ms 0 formats to "0s", a bad timestamp to "".
+    win.Leaderboard.render(d, { state: "ready", status: "Updated 18:42:27", rows: [{
+      nickname: "Bad", total_score: "x", correct_count: null,
+      bonuses_matched: undefined, elapsed_ms: "zzz",
+      finished_at: "not a date", repeat: false
+    }] });
+    var bad = d.querySelectorAll("#lb-body tr")[0];
+    rec("9. malformed numbers and a bad timestamp coerce instead of throwing",
+      bad.cells[2].textContent === "0" && bad.cells[3].textContent === "0" &&
+        bad.cells[4].textContent === "0" && bad.cells[5].textContent === "0s" &&
+        bad.cells[6].textContent === "",
+      "score='" + bad.cells[2].textContent + "' correct='" + bad.cells[3].textContent +
+        "' bonus='" + bad.cells[4].textContent + "' time='" + bad.cells[5].textContent +
+        "' finished='" + bad.cells[6].textContent + "'");
+
+    win.Leaderboard.render(d, { state: "loading", status: "Loading…" });
+    rec("10. the loading state shows three skeleton rows and no message",
+      d.querySelectorAll("#lb-body tr.is-skeleton").length === 3 &&
+        $(f, "lb-table").hidden === false && $(f, "lb-message").hidden === true,
+      "skeletons=" + d.querySelectorAll("#lb-body tr.is-skeleton").length +
+        " tableHidden=" + $(f, "lb-table").hidden);
+
+    win.Leaderboard.render(d, { state: "empty", status: "Updated 18:42:17",
+      message: "No results yet — finish a contest and your score appears here.",
+      link: { href: "index.html", text: "Play now" } });
+    var msg = $(f, "lb-message"), link = msg.querySelector("a");
+    rec("11. the empty state says so and links to the game",
+      $(f, "lb-table").hidden === true &&
+        msg.textContent.indexOf("No results yet") === 0 && link !== null &&
+        link.textContent === "Play now" && link.getAttribute("href") === "index.html",
+      "tableHidden=" + $(f, "lb-table").hidden + " msg='" + msg.textContent + "'");
+
+    // The error branch only has something to keep if a good board was on
+    // screen first, so drive Ready -> Error — the real refresh-failure path.
+    win.Leaderboard.render(d, { state: "ready", rows: ranked(), status: "Updated 18:42:37" });
+    win.Leaderboard.render(d, { state: "error", rows: ranked(), status: "Couldn't load — retrying" });
+    rec("12. an error keeps the rows already on screen",
+      d.querySelectorAll("#lb-body tr").length === 11 &&
+        $(f, "lb-status").className.indexOf("is-error") !== -1,
+      "rows=" + d.querySelectorAll("#lb-body tr").length +
+        " class=" + $(f, "lb-status").className);
+
+    // Spec §8 separates "Error with prior rows" from "Error on first load";
+    // the latter must show the message rather than the loading skeleton.
+    win.Leaderboard.render(d, { state: "loading", status: "Loading…" });
+    win.Leaderboard.render(d, { state: "error", status: "Couldn't load — retrying",
+      message: "Couldn't load the leaderboard." });
+    rec("13. an error on first load shows the message, not the skeleton",
+      $(f, "lb-table").hidden === true &&
+        $(f, "lb-message").hidden === false &&
+        d.querySelectorAll("#lb-body tr").length === 0 &&
+        $(f, "lb-status").className.indexOf("is-error") !== -1,
+      "tableHidden=" + $(f, "lb-table").hidden + " msgHidden=" + $(f, "lb-message").hidden +
+        " rows=" + d.querySelectorAll("#lb-body tr").length);
+
+    /* --- 14: the same render inside a genuine 360px viewport --- */
+    await load(narrow);
+    var nd = D(narrow), nwin = W(narrow);
+    nwin.Leaderboard.render(nd, { state: "ready", rows: nwin.Leaderboard.rankRows(rawRows(), 10),
+                                  status: "Updated 18:42:07" });
+    // The iframe's own vertical scrollbar takes ~15px of the *inner* viewport,
+    // so the frame's content box (`narrow.clientWidth`) is the honest measure
+    // of "is this really a 360px viewport"; scrollWidth <= clientWidth then
+    // proves nothing overflows sideways inside it.
+    rec("14. seven columns reflow inside 360px without horizontal scroll",
+      nd.documentElement.scrollWidth <= nd.documentElement.clientWidth &&
+        narrow.clientWidth === 360,
+      "scrollWidth=" + nd.documentElement.scrollWidth +
+        " clientWidth=" + nd.documentElement.clientWidth +
+        " frameContent=" + narrow.clientWidth);
+
+    finish();
+  }
+
+  function finish() {
+    var failed = results.filter(function (r) { return !r.ok; });
+    document.getElementById("report").textContent = results.map(function (r) {
+      return (r.ok ? "PASS  " : "FAIL  ") + r.name + (r.ok ? "" : "  [" + r.detail + "]");
+    }).join("\n");
+    var verdict = document.getElementById("verdict");
+    verdict.textContent = (results.length - failed.length) + " passed, " + failed.length + " failed";
+    verdict.className = failed.length ? "fail" : "pass";
+    document.title = "stats checklist: " + verdict.textContent;
+  }
+
+  run().catch(function (e) {
+    document.getElementById("verdict").textContent = "HARNESS ERROR " + e.message;
+    document.getElementById("verdict").className = "fail";
+    document.title = "stats checklist: HARNESS ERROR";
+  });
+})();
+</script>
+</body>
+</html>

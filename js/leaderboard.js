@@ -11,7 +11,6 @@
   var REFRESH_MS = 10000;
   var TOP_NAMES = 10;
   var COLUMNS = ["#", "Player", "Score", "Correct", "Bonus", "Time", "Finished"];
-  var activeLoad = null;
 
   // Pure ranking over a stream the server already ordered by
   // total_score desc, created_at asc.
@@ -68,13 +67,113 @@
     return !docLike.hidden;
   }
 
+  function cell(doc, text, label, cls) {
+    var td = doc.createElement("td");
+    td.setAttribute("data-label", label);
+    if (cls) td.className = cls;
+    td.textContent = text;
+    return td;
+  }
+
+  function num(v) { return Number(v) || 0; }
+
+  function displayName(row) {
+    if (!row) return "";
+    return (typeof row.nickname === "string") ? row.nickname : String(row.nickname || "");
+  }
+
+  function writeRows(doc, body, rows) {
+    body.textContent = "";
+    var rank = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (!row) continue;
+      var isRepeat = row.repeat === true;
+      if (!isRepeat) rank++;
+      var tr = doc.createElement("tr");
+      tr.className = "lb-row" + (isRepeat ? " is-repeat" : "");
+      tr.appendChild(cell(doc, isRepeat ? "" : String(rank), "#", "lb-rank"));
+      tr.appendChild(cell(doc, displayName(row), "Player", ""));
+      tr.appendChild(cell(doc, String(num(row.total_score)), "Score", ""));
+      tr.appendChild(cell(doc, String(num(row.correct_count)), "Correct", ""));
+      tr.appendChild(cell(doc, String(num(row.bonuses_matched)), "Bonus", ""));
+      tr.appendChild(cell(doc, GL.formatDuration(num(row.elapsed_ms)) || "", "Time", ""));
+      tr.appendChild(cell(doc, GL.formatTimestamp(row.finished_at), "Finished", ""));
+      body.appendChild(tr);
+    }
+  }
+
+  function writeSkeleton(doc, body) {
+    body.textContent = "";
+    for (var i = 0; i < 3; i++) {
+      var tr = doc.createElement("tr");
+      tr.className = "lb-row is-skeleton";
+      for (var c = 0; c < COLUMNS.length; c++) tr.appendChild(cell(doc, "", COLUMNS[c], ""));
+      body.appendChild(tr);
+    }
+  }
+
+  function writeMessage(doc, el, text, link) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+    if (text) el.appendChild(doc.createTextNode(text));
+    if (link) {
+      el.appendChild(doc.createTextNode(" "));
+      var a = doc.createElement("a");
+      a.setAttribute("href", link.href);
+      a.appendChild(doc.createTextNode(link.text));
+      el.appendChild(a);
+    }
+  }
+
+  // The one writer for the whole page. Exactly one of the table and the
+  // message is visible at a time, and a failed load never rewrites the tbody,
+  // so old and new rows can never coexist.
+  function render(doc, view) {
+    if (!doc) return;
+    var status = doc.getElementById("lb-status");
+    var table = doc.getElementById("lb-table");
+    var msg = doc.getElementById("lb-message");
+    var body = doc.getElementById("lb-body");
+    if (!status || !table || !msg || !body) return;
+
+    var state = (view && view.state) ? view.state : "";
+    status.textContent = (view && view.status) || "";
+    status.className = "save-status" + (state === "error" ? " is-error" : "");
+
+    // "Prior rows" means rows that actually carry data. A skeleton is the
+    // loading placeholder, so a failure on the very first load must fall
+    // through to the message (spec §8, "Error on first load") instead of
+    // parking three grey bars under an error line forever.
+    var hasRows = false;
+    var trs = body.getElementsByTagName("tr");
+    for (var t = 0; t < trs.length; t++) {
+      if (trs[t].className.indexOf("is-skeleton") === -1) { hasRows = true; break; }
+    }
+    var showTable = state === "loading" || state === "ready" || (state === "error" && hasRows);
+
+    table.hidden = !showTable;
+    msg.hidden = showTable;
+
+    if (!showTable) {
+      // Clearing the tbody keeps `hasRows` honest across a later error: rows
+      // that are no longer on screen must not resurface behind the message.
+      body.textContent = "";
+      writeMessage(doc, msg, (view && view.message) || "", (view && view.link) || null);
+      return;
+    }
+    if (state === "loading") writeSkeleton(doc, body);
+    else if (state === "ready") writeRows(doc, body, (view && view.rows) || []);
+    // state === "error" with rows already on screen: the tbody is left exactly
+    // as it is. Nothing is appended, so a stale row can never sit beside a new
+    // one, and a single dropped request never blanks a good leaderboard.
+  }
+
   return {
     REFRESH_MS: REFRESH_MS,
     TOP_NAMES: TOP_NAMES,
     COLUMNS: COLUMNS,
     rankRows: rankRows,
     shouldPoll: shouldPoll,
-    _active: function () { return activeLoad; },
-    _setActive: function (fn) { activeLoad = fn; }
+    render: render
   };
 });

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halloween Contest Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="fog" aria-hidden="true"></div>
+
+<main class="card">
+  <a class="lb-back" href="index.html">&larr; Back to the game</a>
+
+  <header class="masthead">
+    <h1 class="title">Halloween Contest Leaderboard</h1>
+    <p id="lb-status" class="save-status" aria-live="polite">Loading&hellip;</p>
+  </header>
+
+  <button id="btn-lb-refresh" class="btn btn-ghost" type="button">Refresh</button>
+
+  <div id="lb-board">
+    <table id="lb-table" class="lb-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Player</th><th>Score</th><th>Correct</th>
+          <th>Bonus</th><th>Time</th><th>Finished</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body"></tbody>
+    </table>
+    <p id="lb-message" class="lb-message" hidden></p>
+  </div>
+
+  <p class="lb-foot">Ranked from the top 500 results.</p>
+</main>
+
+<footer class="page-foot">Happy Halloween 🕸️</footer>
+
+<script src="js/game-logic.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/results-api.js"></script>
+<script src="js/leaderboard.js"></script>
+</body>
+</html>

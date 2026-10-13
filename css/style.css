@@ -461,3 +461,69 @@ h2 {
   .screen { animation: none; }
   .btn, .option { transition: none; }
 }
+
+/* ---- Leaderboard (stats.html) ---- */
+.lb-back {
+  display: inline-block;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+.lb-back:hover, .lb-back:focus-visible { color: var(--bone); }
+
+.lb-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
+.lb-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(168, 159, 145, 0.35);
+}
+/* `anywhere` keeps a long nickname or timestamp from widening the table: it
+   drops the cell's min-content width to a single character, so the layout
+   wraps instead of scrolling sideways. */
+.lb-table td {
+  padding: 9px 6px;
+  border-bottom: 1px solid rgba(168, 159, 145, 0.14);
+  color: var(--bone);
+  overflow-wrap: anywhere;
+}
+.lb-table td.lb-rank { color: var(--orange); font-weight: 700; width: 2.5em; }
+.lb-table tr.is-repeat td { color: var(--muted); opacity: 0.62; }
+.lb-table tr.is-skeleton td {
+  height: 18px;
+  background: linear-gradient(90deg, rgba(168, 159, 145, 0.10), rgba(168, 159, 145, 0.04));
+  border-bottom-color: rgba(168, 159, 145, 0.12);
+}
+.lb-message { color: var(--muted); text-align: center; padding: 26px 4px; font-size: 15px; }
+.lb-message a { color: var(--orange); font-weight: 600; }
+.lb-foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 14px; }
+
+/* Seven columns do not fit at 360px. The header row is dropped and every cell
+   reflows to its own labelled line, so no field is ever hidden. */
+@media (max-width: 559px) {
+  .lb-table thead { display: none; }
+  .lb-table, .lb-table tbody, .lb-table tr, .lb-table td { display: block; width: 100%; }
+  .lb-table tr { padding: 8px 0; border-bottom: 1px solid rgba(168, 159, 145, 0.18); }
+  .lb-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 2px;
+    border: 0;
+    text-align: right;
+  }
+  .lb-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: left;
+    flex: 0 0 auto;
+  }
+}
