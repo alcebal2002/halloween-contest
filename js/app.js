@@ -21,6 +21,7 @@
     failed: "Couldn't save your results."
   };
   var flashTimer = null;        // clears bonusFlash after BONUS_BLINK_MS
+  var pointsFlashTimer = null;  // clears the centred bonus award after BONUS_FLASH_MS
   var note = "";                // "question set changed" note
   var el = {};
 
@@ -29,6 +30,7 @@
   // readers, so the colour is never the only cue.
   var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red", "Cyanide cyan"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
+  var BONUS_FLASH_MS = 2000;    // how long the centred "+10 / +5 / +3" award stays up
 
   var SCREENS = ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question",
     "screen-feedback", "screen-bonus", "screen-results", "screen-error"];
@@ -76,10 +78,29 @@
     render();
   }
 
-  // Cancels a running blink and drops the checked order it was showing.
+  // Cancels a running blink and drops the checked order it was showing, and
+  // clears any bonus award still on screen.
   function clearBonusFlash() {
     if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
     bonusFlash = null;
+    clearPointsFlash();
+  }
+
+  // The centred, transient "+10 / +5 / +3" shown when a bonus is won. Decorative:
+  // the verdict line announces the same award, so the overlay is aria-hidden.
+  function clearPointsFlash() {
+    if (pointsFlashTimer) { clearTimeout(pointsFlashTimer); pointsFlashTimer = null; }
+    if (el.pointsFlash) el.pointsFlash.hidden = true;
+  }
+
+  function showPointsFlash(award) {
+    clearPointsFlash();
+    el.pointsFlashText.textContent = "+" + award;
+    el.pointsFlash.hidden = false;
+    pointsFlashTimer = setTimeout(function () {
+      pointsFlashTimer = null;
+      el.pointsFlash.hidden = true;
+    }, BONUS_FLASH_MS);
   }
 
   function boot() {
@@ -119,6 +140,8 @@
       bonusCheck: $("btn-bonus-check"),
       bonusReset: $("btn-bonus-reset"),
       bonusNext: $("btn-bonus-next"),
+      pointsFlash: $("bonus-flash"),
+      pointsFlashText: $("bonus-flash-text"),
       rTitle: $("results-title"),
       rScore: $("results-score"),
       rTime: $("results-time"),
@@ -319,6 +342,7 @@
     var next = GameLogic.resolveBonus(state, bonusSelection.slice(), new Date());
     if (next === state) return;
     state = next;
+    if (state.bonus.resolved && state.bonus.matched) showPointsFlash(state.bonus.award);
     // No bottles are kept after a check: only a full match leaves the order in
     // the slots. A partial miss first blinks the boxes that were right, then
     // clears them so the next attempt starts from an empty slate.
@@ -555,7 +579,6 @@
     }
 
     var bonus = state.bonus;
-    var entry = state.answers[state.questionIndex] || { points: 0 };
     var size = bonus.target.length;
     var frozen = !!bonusFlash;   // a check is being shown; input is locked out
     var indices = frozen ? bonusFlash.order : (bonus.resolved ? bonus.target : bonusSelection);
@@ -575,7 +598,7 @@
     if (bonus.resolved) {
       el.bonusVerdict.className = "verdict " + (bonus.matched ? "is-correct" : "is-warn");
       el.bonusVerdict.textContent = bonus.matched
-        ? "Match on attempt " + bonus.attemptsUsed + "! +" + entry.points + " points for this question."
+        ? "Match on attempt " + bonus.attemptsUsed + "! +" + bonus.award + " bonus points."
         : "No match - the order was " + bonus.target.map(function (i) { return BOTTLE_NAMES[i]; }).join(" > ") +
           ". You still keep 1 point.";
       el.bonusCheck.hidden = true;

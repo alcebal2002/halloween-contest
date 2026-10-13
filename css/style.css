@@ -220,6 +220,34 @@ h2 {
 .verdict.is-wrong { color: #fca5a5; }
 .verdict.is-warn { color: var(--orange); }
 
+/* The bonus award flashes centred while the order settles (spec §10.3): a big
+   "+10" / "+5" / "+3" that fades in and out over a couple of seconds. Decorative
+   — the bonus verdict line below announces the same award. */
+.bonus-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.bonus-flash-text {
+  font-family: var(--serif);
+  font-size: clamp(64px, 18vw, 132px);
+  line-height: 1;
+  color: var(--orange);
+  text-shadow: 0 0 24px rgba(255, 122, 26, 0.7), 0 0 60px rgba(255, 122, 26, 0.4);
+  animation: bonus-award 2s ease-out forwards;
+}
+@keyframes bonus-award {
+  0%   { opacity: 0; transform: scale(0.5); }
+  18%  { opacity: 1; transform: scale(1.12); }
+  32%  { transform: scale(1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1); }
+}
+
 /* ---- Rules screen ---- */
 
 .rules { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
@@ -388,6 +416,7 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .slot.is-matched { animation: none; }
   .slot.is-correct-pos { animation: none; }
+  .bonus-flash-text { animation: none; }
 }
 
 .score { font-size: clamp(34px, 9vw, 52px); font-family: var(--serif); color: var(--orange); margin: 6px 0; }

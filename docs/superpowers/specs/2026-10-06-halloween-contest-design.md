@@ -239,14 +239,14 @@ the current contract wherever the two disagree.
 
 | Outcome | Points for the question |
 |---|---|
-| Correct, matched the bottle order on the 1st attempt | **5** |
-| Correct, matched on the 2nd attempt | **3** |
-| Correct, matched on the 3rd attempt | **2** |
+| Correct, matched the bottle order on the 1st attempt | **11** (1 + a 10-point bonus) |
+| Correct, matched on the 2nd attempt | **6** (1 + a 5-point bonus) |
+| Correct, matched on the 3rd attempt | **4** (1 + a 3-point bonus) |
 | Correct, no match after 3 attempts | **1** |
 | Wrong answer | **0** |
 
-Maximum **50 points** (10 questions × 5). Internally a correct answer pays 1 point at answer
-time and the resolved bonus adds the remainder (4 / 2 / 1 / 0), so `score` is always the sum of
+Maximum **110 points** (10 questions × 11). Internally a correct answer pays 1 point at answer
+time and the resolved bonus adds the remainder (10 / 5 / 3 / 0), so `score` is always the sum of
 `answers[].points` — that equality is enforced by `validateStoredState`.
 
 ### 10.3 Bonus round interaction
@@ -266,6 +266,13 @@ see that every position matched. Only the **border** (and its glow) changes — 
 keeps its own colour and fill. The highlight is derived from `bonus.matched` at render time,
 not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
 the bottles selectable again. A settled miss never lights the slots.
+
+A match also flashes its award in the middle of the screen: a large `+10` / `+5` / `+3` (the
+`+` and `bonus.award`) that fades in and out over two seconds. `#bonus-flash` is fixed and
+viewport-centred and purely decorative (`aria-hidden`); the bonus summary line beneath the
+slots carries the same award for screen readers. Under `prefers-reduced-motion` the award still
+appears but without the pop. It is cleared by the same transition that clears the partial-miss
+blink of the next paragraph.
 
 Every check empties the slots again — the order is kept only on a match. When a check leaves at
 least one bottle in the right position but does not solve the order, those borders flash neon
@@ -307,13 +314,14 @@ the sum of the recorded points.
 
 ### 10.7 Tests
 
-`tests/test-suite.js` (Node and browser, 56 assertions) covers the points table, bonus
+`tests/test-suite.js` (Node and browser, 92 tests) covers the points table, bonus
 validation, the per-position `matchPositions` helper, elapsed-time accumulation and the gap cap,
 plus everything in §8.
-`tests/app-check.html` (29 checks) drives the real page through instructions, HUD, both bonus
-outcomes (the neon match highlight, the green flash on a partial match and the empty slots it
+`tests/app-check.html` (42 checks) drives the real page through instructions, HUD, both bonus
+outcomes (the neon match highlight, the big centred "+10 / +5 / +3" award flash, the green flash
+on a partial match and the empty slots it
 leaves — including after a reload — and the settled miss), resume from every phase, and the
 results screen.
-`tests/layout-check.html` (36
+`tests/layout-check.html` (37
 checks) repeats the 360px overflow assertion at every step of the flow.
 `tests/make-nostorage.js` regenerates the `localStorage`-blocked copy of `index.html`.

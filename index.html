@@ -12,6 +12,12 @@
 <body>
 <div class="fog" aria-hidden="true"></div>
 
+<!-- The bonus award pops up centred for a couple of seconds after a matched
+     order. Decorative: the bonus verdict line announces the same award. -->
+<div id="bonus-flash" class="bonus-flash" hidden aria-hidden="true">
+  <span id="bonus-flash-text" class="bonus-flash-text"></span>
+</div>
+
 <!-- One poison vial, drawn once and reused by the tray bottles and the order
      slots. The glass is painted in currentColor, which each bottle/reslot sets
      to its neon liquid. -->
@@ -60,9 +66,10 @@
       <li><b>10 Halloween questions</b>, each with three possible answers.</li>
       <li>Answer <b>correctly</b> and you unlock the <b>poison bonus</b>: guess the order of
         four poison bottles. The real order is hidden, and it changes on every question.</li>
-      <li>You get <b>three attempts</b> to match it exactly. Match on the 1st attempt and the
-        question is worth <b>5 points</b>, on the 2nd <b>3 points</b>, on the 3rd <b>2 points</b>.
-        Run out of attempts and you still keep <b>1 point</b>. Answer wrong and it is worth <b>0</b>.</li>
+      <li>You get <b>three attempts</b> to match it exactly. Match it on the 1st attempt and the
+        bonus pays <b>+10 points</b>, on the 2nd <b>+5 points</b>, on the 3rd <b>+3 points</b>.
+        Run out of attempts and you still keep the <b>1 point</b> for the correct answer.
+        Answer wrong and it is worth <b>0</b>.</li>
       <li>Your <b>points</b> and the <b>question counter</b> stay at the top of the page throughout.</li>
       <li>The final screen shows your <b>total points</b>, the <b>time</b> you took and <b>when</b> you finished.</li>
     </ul>

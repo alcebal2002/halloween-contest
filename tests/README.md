@@ -8,7 +8,7 @@ manual one.
 | --- | --- | --- |
 | `node tests/run-tests.js` | Node ≥ 14, from the project root | `92 passed, 0 failed`, exit code `0` |
 | `tests/test.html` | open directly (`file://`) or serve the folder | `92 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `40 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `42 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `37 passed, 0 failed` |
 | `tests/stats-check.html` | serve the folder, open `/tests/stats-check.html` | `22 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
@@ -40,7 +40,8 @@ profile has to be fresh.
 
 - **`run-tests.js` / `test.html`** — the same `test-suite.js` in two environments (Node and
   browser), covering question validation and selection, the state machine (instructions →
-  question → feedback → bonus → results), the poison-bonus points table (5 / 3 / 2 / 1 / 0), the
+  question → feedback → bonus → results), the poison-bonus points table (the question totals
+  11 / 6 / 4 / 1 / 0, i.e. a +10 / +5 / +3 award on top of the 1-point correct answer), the
   per-position `matchPositions` helper, elapsed play time with the five-minute gap cap,
   timestamps, and storage validation (including a mid-bonus round-trip and the optional
   recorded order). Tests may return a promise, and both runners await each one in
@@ -51,7 +52,8 @@ profile has to be fresh.
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
   four-bottle poison tray (a glossy neon vial, drawn once and reused, with the
   colour named under each bottle and a dim empty vial in every unfilled order slot), immediate
-  feedback, the bonus round (open → pick four bottles → first-attempt match pays 5 → Next,
+  feedback, the bonus round (open → pick four bottles → first-attempt match pays an 11-point
+  question, with a big centred "+10" that fades in for a couple of seconds → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following
   round, the green flash on a partial match (locked controls, then empty slots for the next
   attempt), the reload that starts that round from empty slots, resume from the welcome-back

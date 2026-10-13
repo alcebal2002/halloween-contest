@@ -6,12 +6,15 @@ var QUESTIONS_PER_CONTEST = 10;
 var MAX_NICKNAME_LENGTH = 20;
 var VALID_PHASES = ["nickname", "instructions", "welcomeBack", "question", "feedback", "bonus", "results"];
 
-/* Scoring: a correct answer pays 1 base point, the poison bonus on top takes the
-   question total to 5 (match on the 1st attempt), 3 (2nd), 2 (3rd) or stays at 1
-   when all three attempts fail. A wrong answer pays 0 and never opens the bonus. */
-var BONUS_TOTAL_POINTS = [5, 3, 2];  // whole-question total for a match on attempt 1, 2, 3
+/* Scoring: a correct answer pays 1 base point, and the poison bonus pays 10 on
+   top for a match on the 1st attempt, 5 on the 2nd and 3 on the 3rd, so the
+   question total is 11 / 6 / 4. A correct answer that never matches keeps its 1
+   point; a wrong answer pays 0 and never opens the bonus. */
+var BONUS_AWARD_POINTS = [10, 5, 3]; // bonus paid for a match on attempt 1, 2, 3
 var BONUS_MISS_POINTS = 1;           // correct answer, three failed attempts
 var BONUS_BASE_POINTS = 1;           // paid by the answer itself, before the bonus
+/* Whole-question total for a match on attempt 1, 2, 3: the award plus the base. */
+var BONUS_TOTAL_POINTS = BONUS_AWARD_POINTS.map(function (award) { return award + BONUS_BASE_POINTS; });
 var MAX_POINTS_PER_QUESTION = BONUS_TOTAL_POINTS[0];
 var BONUS_MAX_ATTEMPTS = 3;
 var BONUS_COLOR_COUNT = 4;           // poison bottles in play (tray order 0..3)
@@ -438,6 +441,7 @@ var GameLogic = {
   VALID_PHASES: VALID_PHASES,
   MAX_POINTS_PER_QUESTION: MAX_POINTS_PER_QUESTION,
   BONUS_MAX_ATTEMPTS: BONUS_MAX_ATTEMPTS,
+  BONUS_AWARD_POINTS: BONUS_AWARD_POINTS,
   BONUS_TOTAL_POINTS: BONUS_TOTAL_POINTS,
   BONUS_MISS_POINTS: BONUS_MISS_POINTS,
   ELAPSED_MAX_GAP_MS: ELAPSED_MAX_GAP_MS,

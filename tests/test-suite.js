@@ -296,7 +296,7 @@
     s = GL.advance(s, ctx.questions, at);
     assertEqual(s.phase, "bonus");
     s = GL.resolveBonus(s, s.bonus.target, at);
-    assertEqual(s.score, 5, "matching the first attempt on the last question is worth 5");
+    assertEqual(s.score, 11, "matching the first attempt on the last question is worth 11");
     s = GL.advance(s, ctx.questions, at);
     assertEqual(s.phase, "results");
     assertEqual(s.finishedAt, "2026-10-31T21:00:00.000Z");
@@ -372,28 +372,31 @@
     return s;
   }
 
-  test("bonus points: matching the 1st attempt is worth 5", function () {
+  test("bonus points: matching the 1st attempt pays a 10-point bonus on top", function () {
     var s = playAttempts(GL, [true]);
     assertEqual(s.bonus.resolved, true);
     assertEqual(s.bonus.matched, true);
     assertEqual(s.bonus.attemptsUsed, 1);
-    assertEqual(s.answers[0].points, 5, "first attempt must pay 5 points");
-    assertEqual(s.score, 5);
+    assertEqual(s.bonus.award, 10, "first attempt must pay a 10-point bonus");
+    assertEqual(s.answers[0].points, 11, "first attempt must total 11 points");
+    assertEqual(s.score, 11);
   });
 
-  test("bonus points: matching the 2nd attempt is worth 3", function () {
+  test("bonus points: matching the 2nd attempt pays a 5-point bonus on top", function () {
     var s = playAttempts(GL, [false, true]);
     assertEqual(s.bonus.attemptsUsed, 2);
-    assertEqual(s.answers[0].points, 3, "second attempt must pay 3 points");
-    assertEqual(s.score, 3);
+    assertEqual(s.bonus.award, 5, "second attempt must pay a 5-point bonus");
+    assertEqual(s.answers[0].points, 6, "second attempt must total 6 points");
+    assertEqual(s.score, 6);
   });
 
-  test("bonus points: matching the 3rd attempt is worth 2", function () {
+  test("bonus points: matching the 3rd attempt pays a 3-point bonus on top", function () {
     var s = playAttempts(GL, [false, false, true]);
     assertEqual(s.bonus.attemptsUsed, 3);
     assertEqual(s.bonus.resolved, true, "the third attempt is the last one");
-    assertEqual(s.answers[0].points, 2, "third attempt must pay 2 points");
-    assertEqual(s.score, 2);
+    assertEqual(s.bonus.award, 3, "third attempt must pay a 3-point bonus");
+    assertEqual(s.answers[0].points, 4, "third attempt must total 4 points");
+    assertEqual(s.score, 4);
   });
 
   test("bonus points: three misses still pay 1 for the correct answer", function () {
@@ -439,12 +442,12 @@
     var resolved = playAttempts(GL, [true]);
     assertEqual(GL.resolveBonus(resolved, [0, 1, 2, 3], new Date()), resolved, "a resolved bonus must not accept more guesses");
     assertEqual(resolved.bonus.attemptsUsed, 1, "attempt count changed after resolution");
-    assertEqual(resolved.score, 5, "score changed after resolution");
+    assertEqual(resolved.score, 11, "score changed after resolution");
   });
 
-  test("every resolved bonus keeps the question total inside 0..5", function () {
+  test("every resolved bonus keeps the question total inside 0..11", function () {
     var combos = [[true], [false, true], [false, false, true], [false, false, false]];
-    var expected = [5, 3, 2, 1];
+    var expected = [11, 6, 4, 1];
     for (var i = 0; i < combos.length; i++) {
       var s = playAttempts(GL, combos[i]);
       assertEqual(s.answers[0].points, expected[i], "attempt pattern " + JSON.stringify(combos[i]));
@@ -538,7 +541,7 @@
     assertEqual(restored.score, 1, "the base point must still be counted after a reload");
     var resumed = GL.resolveBonus(restored, restored.bonus.target, new Date());
     assertEqual(resumed.bonus.resolved, true, "the second attempt must be usable after a reload");
-    assertEqual(resumed.answers[0].points, 3, "matching on the second attempt must pay 3 after a reload");
+    assertEqual(resumed.answers[0].points, 6, "matching on the second attempt must total 6 after a reload");
   });
 
   test("validateStoredState rejects a corrupt bonus", function () {
