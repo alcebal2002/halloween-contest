@@ -79,23 +79,24 @@
   }
 
   // Cancels a running blink and drops the checked order it was showing, and
-  // clears any bonus award still on screen.
+  // clears any points award still on screen.
   function clearBonusFlash() {
     if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
     bonusFlash = null;
     clearPointsFlash();
   }
 
-  // The centred, transient "+10 / +5 / +3" shown when a bonus is won. Decorative:
-  // the verdict line announces the same award, so the overlay is aria-hidden.
+  // The centred, transient "+1" (correct answer) or "+10 / +5 / +3" (matched
+  // bonus) shown while an answer settles. Decorative: the verdict line
+  // announces the same points, so the overlay is aria-hidden.
   function clearPointsFlash() {
     if (pointsFlashTimer) { clearTimeout(pointsFlashTimer); pointsFlashTimer = null; }
     if (el.pointsFlash) el.pointsFlash.hidden = true;
   }
 
-  function showPointsFlash(award) {
+  function showPointsFlash(points) {
     clearPointsFlash();
-    el.pointsFlashText.textContent = "+" + award;
+    el.pointsFlashText.textContent = "+" + points;
     el.pointsFlash.hidden = false;
     pointsFlashTimer = setTimeout(function () {
       pointsFlashTimer = null;
@@ -140,8 +141,8 @@
       bonusCheck: $("btn-bonus-check"),
       bonusReset: $("btn-bonus-reset"),
       bonusNext: $("btn-bonus-next"),
-      pointsFlash: $("bonus-flash"),
-      pointsFlashText: $("bonus-flash-text"),
+      pointsFlash: $("points-flash"),
+      pointsFlashText: $("points-flash-text"),
       rTitle: $("results-title"),
       rScore: $("results-score"),
       rTime: $("results-time"),
@@ -301,6 +302,9 @@
       correctText: q.options[q.correctIndex]
     };
     state = next;
+    // The correct answer's base point pops up centred, the same way the bonus
+    // award does. A wrong answer gives no points, so nothing flashes.
+    if (lastFeedback.correct) showPointsFlash(GameLogic.BONUS_BASE_POINTS);
     persist();
     view = "feedback";
     render();
@@ -386,16 +390,20 @@
   }
 
   // Always renders every slot, filling the ones the player has already picked.
-  // `rings` marks the positions the last check got right (only passed while the
-  // blink is on screen); `matched` is the settled full match.
-  function slotMarkup(indices, size, matched, rings) {
+  // `marks` flags each position's last-check result: true draws the green
+  // "right" border, false the neon-red "wrong" one, and a null entry leaves the
+  // slot alone. It carries only the right positions during a partial-miss blink,
+  // and every position on a settled miss; `matched` is the settled full match.
+  function slotMarkup(indices, size, matched, marks) {
     var markup = "";
     for (var i = 0; i < size; i++) {
       var bottle = indices[i];
       var filled = typeof bottle === "number";
+      var mark = filled && marks ? marks[i] : null;
       var cls = "slot" + (filled ? " is-filled slot-" + bottle : "") +
         (matched && filled ? " is-matched" : "") +
-        (rings && rings[i] && filled ? " is-correct-pos" : "");
+        (mark === true ? " is-correct-pos" : "") +
+        (mark === false ? " is-wrong-pos" : "");
       markup += '<li class="' + cls + '">' +
         '<span class="slot-glyph"' + (filled ? "" : ' aria-hidden="true"') + ">" +
         '<svg class="vial" viewBox="0 0 44 64" aria-hidden="true" focusable="false"><use href="#vial"></use></svg>' +
@@ -591,21 +599,36 @@
       ? "Attempts used: <b>" + bonus.attemptsUsed + "</b> of " + GameLogic.BONUS_MAX_ATTEMPTS
       : "Attempts left: <b>" + (GameLogic.BONUS_MAX_ATTEMPTS - bonus.attemptsUsed) + "</b>";
 
-    // Per-position feedback: while a partial miss is on screen the boxes that
-    // were right blink green, then the order clears for the next attempt.
-    var rings = frozen ? bonusFlash.hits : null;
+    // Per-position feedback. A partial miss blinks only the boxes that were
+    // right (green) before the order clears for the next attempt; a settled miss
+    // reveals the order and marks every box — green where the last attempt was
+    // right, neon red where it was wrong — so the answer reads at a glance.
+    var marks = null;
+    var rightPositions = 0;
+    if (frozen) {
+      marks = bonusFlash.hits.map(function (hit) { return hit ? true : null; });
+    } else if (bonus.resolved && !bonus.matched && bonus.tried) {
+      marks = GameLogic.matchPositions(bonus.target, bonus.tried);
+      if (marks) marks.forEach(function (right) { if (right) rightPositions++; });
+    }
 
-    el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched, rings);
+    el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched, marks);
 
     if (bonus.resolved) {
       // A settled round already speaks for itself on screen: a match rings all
-      // four slots and flashes the award, and a miss leaves the target order in
-      // the slots. So the match line is kept for screen readers only, and a
-      // settled miss no longer repeats the order in text.
-      el.bonusVerdict.className = bonus.matched ? "sr-only" : "verdict is-warn";
-      el.bonusVerdict.textContent = bonus.matched
-        ? "Match on attempt " + bonus.attemptsUsed + "! +" + bonus.award + " bonus points."
-        : "You still keep 1 point.";
+      // four slots and flashes the award, and a settled miss reveals the order
+      // with each box marked right (green) or wrong (neon red). So the verdict
+      // is kept for screen readers only — it announces the award, or how many
+      // positions the last attempt got right.
+      el.bonusVerdict.className = "sr-only";
+      if (bonus.matched) {
+        el.bonusVerdict.textContent = "Match on attempt " + bonus.attemptsUsed + "! +" +
+          bonus.award + " bonus points.";
+      } else if (marks) {
+        el.bonusVerdict.textContent = "No match: " + rightPositions + " of " + size + " positions right.";
+      } else {
+        el.bonusVerdict.textContent = "No match: the hidden order is shown.";
+      }
       el.bonusCheck.hidden = true;
       el.bonusReset.hidden = true;
       el.bonusNext.hidden = false;

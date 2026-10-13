@@ -188,6 +188,19 @@
           " score=" + st.score + " hud='" + hud() + "'");
     });
 
+    /* The correct answer's 1-point base flashes in the middle of the screen, the
+       same "+N" overlay the bonus award uses. */
+    step("immediate reward: the correct answer's +1 fades in centred like the bonus award", function () {
+      var flash = $("points-flash");
+      var cs = W().getComputedStyle(flash);
+      var centred = cs.position === "fixed" &&
+        cs.alignItems === "center" && cs.justifyContent === "center";
+      rec("the correct answer's +1 fades in centred like the bonus award",
+        !flash.hidden && $("points-flash-text").textContent === "+1" && centred,
+        "hidden=" + flash.hidden + " text='" + $("points-flash-text").textContent +
+          "' position=" + cs.position + " centred=" + centred);
+    });
+
     /* ---- 1. resume during feedback ---- */
     await reload();
     step("1a. reload during feedback shows the welcome-back card with progress", function () {
@@ -325,23 +338,23 @@
     });
 
     step("2d1. the bonus award flashes +10 in the middle of the screen", function () {
-      var flash = $("bonus-flash");
+      var flash = $("points-flash");
       var cs = W().getComputedStyle(flash);
-      var size = parseFloat(W().getComputedStyle($("bonus-flash-text")).fontSize);
+      var size = parseFloat(W().getComputedStyle($("points-flash-text")).fontSize);
       var centred = cs.position === "fixed" && cs.display === "flex" &&
         cs.alignItems === "center" && cs.justifyContent === "center";
       // Bigger than the 16px verdict, centred over the whole viewport.
       rec("2d1. the bonus award flashes +10 in the middle of the screen",
-        !flash.hidden && $("bonus-flash-text").textContent === "+10" && centred && size > 40,
-        "hidden=" + flash.hidden + " text='" + $("bonus-flash-text").textContent +
+        !flash.hidden && $("points-flash-text").textContent === "+10" && centred && size > 40,
+        "hidden=" + flash.hidden + " text='" + $("points-flash-text").textContent +
           "' position=" + cs.position + " display=" + cs.display + " fontSize=" + size);
     });
 
     await wait(2200);
     step("2d1b. the award flash disappears after a couple of seconds", function () {
       rec("2d1b. the award flash disappears after a couple of seconds",
-        $("bonus-flash").hidden === true && $("bonus-flash-text").textContent === "+10",
-        "hidden=" + $("bonus-flash").hidden);
+        $("points-flash").hidden === true && $("points-flash-text").textContent === "+10",
+        "hidden=" + $("points-flash").hidden);
     });
 
     step("2d2. a match rings all four order slots in neon green (border only)", function () {
@@ -480,32 +493,52 @@
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
-    step("f3. a miss with nothing right clears at once, and the third settles at 1 point with no order text", function () {
-      pick(missOrder());
+    step("f3. a miss with nothing right clears at once, and the third settles at 1 point", function () {
+      pick(missOrder());                         // attempt 2: nothing right, clears at once
       var st = app().getState();
       var stillOpen = st.bonus.resolved === false;
       var verdictBefore = $("bonus-verdict").textContent;
       var clearedAtOnce = $("bonus-slots").querySelectorAll(".slot.is-filled").length === 0 &&
-        $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length === 0;
-      if (stillOpen) pick(missOrder());
+        $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length === 0 &&
+        $("bonus-slots").querySelectorAll(".slot.is-wrong-pos").length === 0;
+      // The final attempt puts one bottle back where it belongs, so the settled
+      // miss has to mark a right and a wrong position at the same time.
+      var target = app().getState().bonus.target;
+      var finalOrder = [target[0], target[2], target[3], target[1]];
+      if (stillOpen) pick(finalOrder);
       var done = app().getState();
-      rec("f3. a miss with nothing right clears at once, and the third settles at 1 point with no order text",
-        stillOpen && clearedAtOnce && verdictBefore === "No match - try again." && done.bonus.resolved === true &&
-          done.bonus.matched === false && done.bonus.attemptsUsed === 3 &&
-          done.answers[1].points === 1 && done.score === 12 &&
-          $("bonus-verdict").textContent === "You still keep 1 point.",
-        "stillOpen=" + stillOpen + " clearedAtOnce=" + clearedAtOnce + " verdictBefore='" + verdictBefore + "' attempts=" + done.bonus.attemptsUsed +
+      rec("f3. a miss with nothing right clears at once, and the third settles at 1 point",
+        stillOpen && clearedAtOnce && verdictBefore === "No match - try again." &&
+          done.bonus.resolved === true && done.bonus.matched === false && done.bonus.attemptsUsed === 3 &&
+          done.bonus.tried.join(",") === finalOrder.join(",") && done.answers[1].points === 1 &&
+          done.score === 12 && $("bonus-verdict").classList.contains("sr-only") &&
+          $("bonus-verdict").textContent === "No match: 1 of 4 positions right.",
+        "stillOpen=" + stillOpen + " clearedAtOnce=" + clearedAtOnce + " verdictBefore='" + verdictBefore +
+          "' attempts=" + done.bonus.attemptsUsed + " tried=" + done.bonus.tried.join(",") +
           " points=" + done.answers[1].points + " score=" + done.score +
           " verdict='" + $("bonus-verdict").textContent + "'");
     });
 
-    step("f3b. three misses fill the slots with the order but never light them up", function () {
-      var matched = $("bonus-slots").querySelectorAll(".slot.is-matched").length;
+    step("f3b. the settled miss reveals the order, marking each slot green or neon red", function () {
+      var slots = $("bonus-slots").querySelectorAll(".slot");
       var filled = $("bonus-slots").querySelectorAll(".slot.is-filled").length;
-      var rings = $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length;
-      rec("f3b. three misses fill the slots with the order but never light them up",
-        filled === 4 && matched === 0 && rings === 0 && app().getState().bonus.matched === false,
-        "filled=" + filled + " matched=" + matched + " rings=" + rings);
+      var matched = $("bonus-slots").querySelectorAll(".slot.is-matched").length;
+      var green = $("bonus-slots").querySelector(".slot.is-correct-pos");
+      var reds = $("bonus-slots").querySelectorAll(".slot.is-wrong-pos");
+      var reduced = W().matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var gcs = green ? W().getComputedStyle(green) : null;
+      var grgb = gcs ? gcs.borderTopColor.match(/\d+/g) : null;
+      var greenOk = !!gcs && !!grgb && +grgb[0] < 120 && +grgb[1] > 180 && +grgb[2] < 120 &&
+        (reduced ? gcs.animationName === "none" : gcs.animationName.indexOf("blink") > -1);
+      var rcs = reds.length ? W().getComputedStyle(reds[0]) : null;
+      var rrgb = rcs ? rcs.borderTopColor.match(/\d+/g) : null;
+      var redOk = !!rcs && !!rrgb && +rrgb[0] > 180 && +rrgb[1] < 120 && +rrgb[2] < 120;
+      rec("f3b. the settled miss reveals the order, marking each slot green or neon red",
+        filled === 4 && matched === 0 && green === slots[0] && reds.length === 3 && greenOk && redOk,
+        "filled=" + filled + " matched=" + matched + " greenIsFirst=" + (green === slots[0]) +
+          " reds=" + reds.length + " greenOk=" + greenOk + " redOk=" + redOk +
+          " greenBorder=" + (gcs ? gcs.borderTopColor : "-") +
+          " redBorder=" + (rcs ? rcs.borderTopColor : "-"));
     });
 
     step("f4. the bonus Next button carries on to question 3", function () {
@@ -584,7 +617,14 @@
       rec("start a fresh run as 'Unlucky'", app().getView() === "question", "view=" + app().getView());
     });
 
-    for (var i = 0; i < 10; i++) {
+    step("a wrong answer gives no points, so nothing flashes", function () {
+      answerWrong();
+      rec("a wrong answer gives no points, so no points flash",
+        app().getView() === "question" && $("points-flash").hidden === true,
+        "view=" + app().getView() + " flashHidden=" + $("points-flash").hidden);
+    });
+
+    for (var i = 0; i < 9; i++) {
       answerWrong();
     }
     await wait(60);

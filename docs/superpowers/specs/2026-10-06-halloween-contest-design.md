@@ -38,7 +38,7 @@ The UI is a single page with five screen sections. One of them is visible at a t
 | `nickname` | Welcome | Title **"Halloween Contest"**, tagline, nickname input, **Start** button |
 | `welcomeBack` | Resume | "Welcome back, *nickname*", progress line ("Question 4 of 10", or "Finished - score X / M" when the stored phase is `results`). In that finished case the card also shows the run's elapsed time and finish time, then a blank gap, then **Continue** / **Start over**. **Continue** returns to the stored phase (`question`, `feedback`, or `results`) |
 | `question` | Quiz | Progress header, question text, three option buttons |
-| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green (the outcome is announced to screen readers via a visually hidden "Correct!" / "Not quite — correct answer: …" line; nothing is shown on screen), **Next** button |
+| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green (the outcome is announced to screen readers via a visually hidden "Correct!" / "Not quite — correct answer: …" line; nothing is shown on screen), a correct answer flashes its **+1** in the middle of the screen (§10.3), **Next** button |
 | `results` | Summary | Nickname, score `X / M`, finish timestamp, full answer review, **Play again** |
 
 Transition rules:
@@ -265,28 +265,31 @@ soft glow that pulses (the pulse is disabled under `prefers-reduced-motion`), so
 see that every position matched. Only the **border** (and its glow) changes — the bottle inside
 keeps its own colour and fill. The highlight is derived from `bonus.matched` at render time,
 not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
-the bottles selectable again. A settled miss never lights the slots; it shows only
-"You still keep 1 point." beneath them — the order is not repeated in text because the slots
-already hold it.
+the bottles selectable again. A settled miss reveals the order in the slots and marks every
+position with the same border-only blink — neon green where the last attempt was right and neon
+red (`#ff2b2b`) where it was wrong — so the player can read the result at a glance. Nothing is
+shown beneath them: the verdict line stays screen-reader-only and announces how many positions
+were right.
 
-A match also flashes its award in the middle of the screen: a large `+10` / `+5` / `+3` (the
-`+` and `bonus.award`) that fades in and out over two seconds. `#bonus-flash` is fixed and
-viewport-centred and purely decorative (`aria-hidden`); the bonus verdict line beneath the
-slots is screen-reader-only and carries the same award. Under `prefers-reduced-motion` the award still
-appears but without the pop. It is cleared by the same transition that clears the partial-miss
-blink of the next paragraph.
+A settled points award flashes in the middle of the screen: a large `+10` / `+5` / `+3` for a
+matched bonus, or `+1` for a correct answer (a **wrong** answer pays nothing and so flashes
+nothing). It is the `+` and the points, fading in and out over two seconds. `#points-flash` is
+fixed and viewport-centred and purely decorative (`aria-hidden`); the verdict line carries the
+same points to screen readers. Under `prefers-reduced-motion` the award still appears but without
+the pop. It is cleared by the same transition that clears the partial-miss blink of the next
+paragraph.
 
 Every check empties the slots again — the order is kept only on a match. When a check leaves at
 least one bottle in the right position but does not solve the order, those borders flash neon
 green for two seconds (four quick blinks; a steady border of the same colour under
 `prefers-reduced-motion`) and the round then clears the boxes for the next attempt, with the
 bottles and the controls locked while the flash is on screen. Only the border blinks; the bottle
-inside is untouched. A check that gets nothing right clears at
-once. The flash is derived from `bonus.tried`, the order submitted on the last check (an optional
-stored field), never from the live selection; leaving or reloading the round drops it, so a
-mid-round reload starts from empty slots with the attempts already spent. With four distinct
-bottles the number of positions that can match is 0, 1, 2 or 4 (never 3), so a partial result
-flashes one or two slots.
+inside is untouched. A check that gets nothing right clears at once. The per-position marks (the
+partial blink and the settled-miss reveal) are derived from `bonus.tried`, the order submitted on
+the last check (an optional stored field), never from the live selection; leaving or reloading
+the round drops it, so a mid-round reload starts from empty slots with the attempts already
+spent. With four distinct bottles the number of positions that can match is 0, 1, 2 or 4 (never
+3), so a partial result flashes one or two slots.
 
 While the round is open the verdict line is screen-reader-only: before the first check it is
 empty, and on a failed check it announces "No match - try again.". On screen the emptied slots
@@ -323,11 +326,12 @@ the sum of the recorded points.
 `tests/test-suite.js` (Node and browser, 92 tests) covers the points table, bonus
 validation, the per-position `matchPositions` helper, elapsed-time accumulation and the gap cap,
 plus everything in §8.
-`tests/app-check.html` (42 checks) drives the real page through instructions, HUD, both bonus
+`tests/app-check.html` (44 checks) drives the real page through instructions, HUD, immediate
+feedback (with the "+1" a correct answer flashes, and nothing on a wrong one), both bonus
 outcomes (the neon match highlight, the big centred "+10 / +5 / +3" award flash, the green flash
 on a partial match and the empty slots it
-leaves — including after a reload — and the settled miss), resume from every phase, and the
-results screen.
+leaves — including after a reload — and the settled miss that reveals the order with each slot
+marked green (right) or neon red (wrong)), resume from every phase, and the results screen.
 `tests/layout-check.html` (39
 checks) repeats the 360px overflow assertion at every step of the flow and asserts a clear
 gap above the action buttons on the feedback and bonus screens.
