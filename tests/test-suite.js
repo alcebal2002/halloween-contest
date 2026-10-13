@@ -3,10 +3,10 @@
   var isNode = (typeof module !== "undefined" && module.exports);
   var GL = isNode ? require("../js/game-logic.js") : root.GameLogic;
   var RA = isNode ? require("../js/results-api.js") : root.ResultsApi;
-  var api = factory(GL, RA);
+  var api = factory(GL, RA, root);
   if (isNode) module.exports = api;
   else root.TestSuite = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, rootRef) {
   "use strict";
 
   var tests = [];
@@ -811,6 +811,46 @@
     assertEqual(RA.classifySaveError(0, null), "failed", "no response at all");
   });
 
+  test("saveResult never throws, even with a config it cannot read", function () {
+    var fetchImpl = function () { return Promise.resolve(jsonResponse(201, {})); };
+    var threw = null;
+    var result = null;
+    try {
+      result = RA.saveResult(null, saveRow(), fetchImpl);
+    } catch (e) {
+      threw = e;
+    }
+    assertEqual(threw, null, "a bad config must resolve, not throw");
+    return result.then(function (res) {
+      assertEqual(res.ok, false, "nothing was sent");
+      assertEqual(res.kind, "failed", "kind");
+    });
+  });
+
+  test("saveResult times out a request that never settles", function () {
+    var hanging = function () { return new Promise(function () { /* never settles */ }); };
+    return RA.saveResult(saveConfig(), saveRow(), hanging, 30).then(function (res) {
+      assertEqual(res.ok, false, "a hung request is not a save");
+      assertEqual(res.kind, "failed", "kind");
+      assert(res.detail.indexOf("timed out") !== -1, "detail names the timeout: " + res.detail);
+    });
+  });
+
+  test("saveResult times out without AbortController too", function () {
+    var realAC = rootRef.AbortController;
+    rootRef.AbortController = undefined;
+    var hanging = function () { return new Promise(function () { /* never settles */ }); };
+    return RA.saveResult(saveConfig(), saveRow(), hanging, 30).then(function (res) {
+      rootRef.AbortController = realAC;
+      assertEqual(res.ok, false, "a hung request is not a save");
+      assertEqual(res.kind, "failed", "kind");
+      assert(res.detail.indexOf("timed out") !== -1, "the fallback timer fired: " + res.detail);
+    }, function (e) {
+      rootRef.AbortController = realAC;
+      throw e;
+    });
+  });
+
   /* ---- Supabase results: row mapping ---- */
 
   function finishedState(overrides) {
@@ -859,6 +899,20 @@
 
   test("buildResultRow never returns a negative elapsed time", function () {
     assertEqual(RA.buildResultRow(finishedState({ elapsedMs: -5 })).elapsed_ms, 0, "clamped at zero");
+  });
+
+  test("buildResultRow refuses to count a bonus on an answer that was not correct", function () {
+    // A hand-edited state can carry points on a wrong answer; the table's
+    // bonuses_within_correctes check would reject such a row, so the count
+    // must not be produced in the first place.
+    var row = RA.buildResultRow(finishedState({
+      answers: [
+        { questionId: 1, selected: 0, correct: false, points: 5 },
+        { questionId: 2, selected: 1, correct: true,  points: 3 }
+      ]
+    }));
+    assertEqual(row.correct_count, 1, "correct_count");
+    assertEqual(row.bonuses_matched, 1, "only the correct answer may count as a bonus");
   });
 
   test("buildResultRow refuses a state that is not finished", function () {

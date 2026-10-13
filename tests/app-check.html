@@ -38,8 +38,10 @@
     return on.join("+") || "none";
   }
   // The harness must never reach the real Supabase project: every save is
-  // answered from here. Set saveStub.mode to drive a different outcome.
-  var saveStub = { mode: "success", calls: [] };
+  // answered from here. Set saveStub.mode to drive a different outcome; "slow"
+  // holds the response open for saveStub.delayMs so a step can act while a
+  // request is still in flight.
+  var saveStub = { mode: "success", calls: [], delayMs: 1000 };
   function installSaveStub() {
     saveStub.calls = [];
     W().fetch = function (url, opts) {
@@ -57,7 +59,11 @@
         });
       }
       if (saveStub.mode === "network") return Promise.reject(new TypeError("Failed to fetch"));
-      return Promise.resolve({ ok: true, status: 201, json: function () { return Promise.resolve({}); } });
+      var ok = Promise.resolve({ ok: true, status: 201, json: function () { return Promise.resolve({}); } });
+      if (saveStub.mode === "slow") {
+        return new Promise(function (resolve) { setTimeout(function () { resolve(ok); }, saveStub.delayMs); });
+      }
+      return ok;
     };
   }
 
@@ -571,18 +577,22 @@
       await reload();
       resumeIfOffered();
       for (var i = 0; i < 10 && app().getView() !== "results"; i++) answerWrong();
+      // The transient state is set by the same render that finishes the run,
+      // so it is visible here — before the stub's promise has resolved.
+      var sawSaving = !$("results-save").hidden && $("results-save").textContent === "Saving your results…";
       await wait(120);
       var line = $("results-save");
       var retry = $("btn-results-retry");
       var call = saveStub.calls[0];
       rec("s1. finishing saves the result and reports it on the results screen",
         app().getView() === "results" &&
+          sawSaving &&
           !line.hidden && line.textContent === "Results saved." &&
           retry.hidden &&
           saveStub.calls.length === 1 &&
           call.url.indexOf("/rest/v1/contest_results") !== -1 &&
           call.opts.headers["apikey"].indexOf("sb_") === 0,
-        "text='" + line.textContent + "' retryHidden=" + retry.hidden +
+        "sawSaving=" + sawSaving + " text='" + line.textContent + "' retryHidden=" + retry.hidden +
           " calls=" + saveStub.calls.length + " url=" + (call ? call.url : "none"));
     });
 
@@ -670,6 +680,47 @@
           line.textContent === "Results saved." &&
           saveStub.calls.length === before + 1,
         "text='" + line.textContent + "' calls=" + saveStub.calls.length + " before=" + before);
+    });
+
+    await astep("s6. a save still in flight when Play again is pressed cannot swallow the new run's save", async function () {
+      saveStub.mode = "slow";
+      saveStub.delayMs = 800;
+      await reload();
+      resumeIfOffered();
+      await wait(150);
+      var before = saveStub.calls.length;
+      // Finish a run and press Play again while its response is still pending.
+      click($("btn-play-again"));
+      for (var i = 0; i < 10 && app().getView() !== "results"; i++) answerWrong();
+      var pendingSession = app().getState().sessionId;
+      // The status text is written by the render; the request itself is
+      // dispatched a microtask later, so the counter is read after a tick.
+      var wasPending = $("results-save").textContent === "Saving your results…";
+      await wait(40);
+      var postedFirst = saveStub.calls.length === before + 1;
+      click($("btn-play-again"));
+      var newSession = app().getState().sessionId;
+      // Let the abandoned run's response land, then finish the new one.
+      await wait(1000);
+      saveStub.mode = "success";
+      saveStub.delayMs = 0;
+      for (var j = 0; j < 10 && app().getView() !== "results"; j++) answerWrong();
+      await wait(150);
+      var line = $("results-save");
+      var posted = JSON.parse(saveStub.calls[saveStub.calls.length - 1].opts.body);
+      rec("s6. a save still in flight when Play again is pressed cannot swallow the new run's save",
+        wasPending &&
+          postedFirst &&
+          pendingSession !== newSession &&
+          app().getView() === "results" &&
+          line.textContent === "Results saved." &&
+          posted.session_id === newSession &&
+          saveStub.calls.length === before + 2,
+        "wasPending=" + wasPending + " postedFirst=" + postedFirst + " text='" + line.textContent +
+          "' calls=" + saveStub.calls.length + " before=" + before +
+          " lastPosted=" + posted.session_id + " newSession=" + newSession);
+      saveStub.mode = "success";
+      saveStub.delayMs = 1000;
     });
 
     /* ---- report ---- */

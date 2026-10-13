@@ -6,9 +6,9 @@ manual one.
 
 | Runner | How to run | Expected verdict |
 | --- | --- | --- |
-| `node tests/run-tests.js` | Node ≥ 14, from the project root | `69 passed, 0 failed`, exit code `0` |
-| `tests/test.html` | open directly (`file://`) or serve the folder | `69 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `36 passed, 0 failed` |
+| `node tests/run-tests.js` | Node ≥ 14, from the project root | `73 passed, 0 failed`, exit code `0` |
+| `tests/test.html` | open directly (`file://`) or serve the folder | `73 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `37 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `37 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
 | `tests/boot-variants.html?variant=getitem` | serve the folder, open `/tests/boot-variants.html?variant=getitem` | `7 passed, 0 failed` |
@@ -23,9 +23,17 @@ python -m http.server 8777 --bind 127.0.0.1
 Headless (the browser runners write their verdict into `<title>`):
 
 ```
-msedge --headless=new --dump-dom --virtual-time-budget=30000 \
-  http://127.0.0.1:8777/tests/app-check.html
+PROFILE=$(mktemp -d)
+msedge --headless=new --disable-gpu --no-first-run --user-data-dir="$PROFILE" \
+  --dump-dom --virtual-time-budget=45000 \
+  "http://127.0.0.1:8777/tests/app-check.html?cb=$(date +%s)"
+rm -rf "$PROFILE"
 ```
+
+Use a throwaway `--user-data-dir` for every run. A reused profile serves `js/*.js` from its HTTP
+cache, so a runner can report yesterday's code — this has produced both a false pass and a false
+failure. The `?cb=` cache-buster covers the document but not the scripts it loads, which is why the
+profile has to be fresh.
 
 ## What each one covers
 
@@ -49,9 +57,12 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
   start over,
   swapped/corrupt data, keyboard start, and the results screen
   (points, total time, timestamp, 10 review rows), plus the Supabase save on that
-  screen (happy path, duplicate rejection with no retry, network failure with a
-  working retry, and the reload that sends nothing because the local marker
-  already records the session). Every save is answered from a stub, so no test
+  screen (happy path — including the transient "Saving your results…" state before
+  it settles — duplicate rejection with no retry, network failure with a
+  working retry, the reload that sends nothing because the local marker
+  already records the session, and a save still in flight when `Play again`
+  is pressed, which must not swallow the next run's save or stamp its marker).
+  Every save is answered from a stub, so no test
   run can reach the live project.
 - **`layout-check.html`** — renders the page in a genuine 360px viewport and walks the whole
   flow (nickname → instructions → question → feedback → bonus with two characters picked → bonus
@@ -68,7 +79,9 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
 - **`nostorage-index.html`** — generated copy of `index.html` with `localStorage` blocked
   entirely, then plays a full contest in memory (nickname → instructions → 10 questions →
   results), asserting the save status stays hidden too (the generator blanks the
-  Supabase key for the same reason `layout-check.html` does). It is generated, never
+  Supabase key for the same reason `layout-check.html` does, and refuses to write
+  its copy at all unless that blanking actually landed — a silently skipped
+  replacement would otherwise let a test post a real row). It is generated, never
   edited: after changing `index.html`, regenerate it with
 
   ```

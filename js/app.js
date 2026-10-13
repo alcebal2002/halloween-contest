@@ -429,8 +429,15 @@
     if (!row) { renderSaveStatus(); return; }
     cloudSave = "saving";
     renderSaveStatus();
+    // The response may arrive after Play again has installed a new session.
+    // Ignoring it is safe — a finished run abandoned this way can never be
+    // resumed, because Play again already persisted the new state over it —
+    // and it is necessary: acting on it would report "saved" for a run whose
+    // row was never posted, and stamp the marker so the reload looks done.
+    var requestedId = state.sessionId;
     ResultsApi.saveResult(config, row).then(function (res) {
-      if (res.ok) { cloudSave = "saved"; markStored(state.sessionId); }
+      if (state.sessionId !== requestedId) return;
+      if (res.ok) { cloudSave = "saved"; markStored(requestedId); }
       else if (res.kind === "duplicate") { cloudSave = "duplicate"; }
       else { cloudSave = "failed"; }
       renderSaveStatus();

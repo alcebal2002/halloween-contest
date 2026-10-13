@@ -39,7 +39,10 @@
     state.answers.forEach(function (a) {
       if (!a) return;
       if (a.correct) correct++;
-      if (pointsOf(a) > 1) bonuses++;
+      // A bonus only ever pays on a correct answer, so requiring it here keeps
+      // bonuses_matched at or below correct_count even for a tampered state —
+      // the column the table's check constraint would otherwise reject.
+      if (a.correct && pointsOf(a) > 1) bonuses++;
     });
 
     return {
@@ -53,9 +56,9 @@
     };
   }
 
-  // Always resolves — never rejects — so the caller can render the outcome
-  // without a catch. The ambient fetch is looked up at call time, which is what
-  // lets the browser harness stub window.fetch.
+  // Always resolves — never rejects, and never throws — so the caller can
+  // render the outcome without a catch. The ambient fetch is looked up at call
+  // time, which is what lets the browser harness stub window.fetch.
   function saveResult(config, row, fetchImpl, timeoutMs) {
     var doFetch = fetchImpl;
     if (!doFetch) {
@@ -67,11 +70,14 @@
 
     var timeout = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : DEFAULT_TIMEOUT_MS;
     var controller = (typeof AbortController === "function") ? new AbortController() : null;
-    var timer = controller ? setTimeout(function () { controller.abort(); }, timeout) : null;
-    var endpoint = String(config.url).replace(/\/+$/, "") + REST_PATH;
+    var timer = null;
 
-    return Promise.resolve()
+    // The endpoint and the options are built inside the chain, so a malformed
+    // config resolves as a failure instead of throwing out of a function whose
+    // whole contract is that it resolves.
+    var request = Promise.resolve()
       .then(function () {
+        var endpoint = String(config.url).replace(/\/+$/, "") + REST_PATH;
         return doFetch(endpoint, {
           method: "POST",
           headers: {
@@ -96,11 +102,25 @@
       })
       .catch(function (e) {
         return { ok: false, kind: "failed", detail: (e && e.message) ? e.message : "network error" };
-      })
-      .then(function (outcome) {
-        if (timer) clearTimeout(timer);
-        return outcome;
       });
+
+    // One deadline for every environment. The abort is a best-effort cancel
+    // sent alongside it: where AbortController is missing, or where the
+    // transport ignores the signal, the race is what still resolves, so the
+    // player gets the error and the retry rather than a status line frozen on
+    // "Saving your results…" for good. Both branches always resolve, so the
+    // race can never produce an unhandled rejection.
+    var expired = new Promise(function (resolve) {
+      timer = setTimeout(function () {
+        if (controller) controller.abort();
+        resolve({ ok: false, kind: "failed", detail: "timed out" });
+      }, timeout);
+    });
+
+    return Promise.race([request, expired]).then(function (outcome) {
+      if (timer) clearTimeout(timer);
+      return outcome;
+    });
   }
 
   // 409 is PostgREST's answer to a primary-key collision; 23505 is the Postgres

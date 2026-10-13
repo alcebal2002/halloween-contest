@@ -130,7 +130,7 @@ Exposed as `window.ResultsApi` in the browser and `module.exports` in Node.
 |---|---|
 | `isConfigured(config)` | `true` only when `config.url` is an `https://` URL and `config.anonKey` is a non-placeholder string (non-empty, ≥ 20 characters, not containing `PASTE`). |
 | `buildResultRow(state)` | Maps finished game state to a row (below). Returns `null` — and the caller makes no request — when the state is not a finished run. |
-| `saveResult(config, row, fetchImpl, timeoutMs)` | Issues the `POST`. **Always resolves**, never rejects: `{ ok: true, kind: "saved" }`, `{ ok: false, kind: "duplicate" }`, or `{ ok: false, kind: "failed", detail }`. Network errors, timeouts and non-`409` statuses all resolve as `"failed"`. `timeoutMs` defaults to 15000 and is enforced with `AbortController`; an abort resolves as `"failed"`. |
+| `saveResult(config, row, fetchImpl, timeoutMs)` | Issues the `POST`. **Always resolves** — never rejects, and never throws, including on a config it cannot read: `{ ok: true, kind: "saved" }`, `{ ok: false, kind: "duplicate" }`, or `{ ok: false, kind: "failed", detail }`. Network errors, timeouts and non-`409` statuses all resolve as `"failed"`. `timeoutMs` defaults to 15000 and is enforced by a deadline that every environment shares: the request is raced against the timer, with `AbortController` used as a best-effort cancel where available, so a transport that ignores the signal still times out. An abort resolves as `"failed"`. |
 | `classifySaveError(status, body)` | `status === 409` or `body.code === "23505"` → `"duplicate"`, otherwise `"failed"`. |
 
 ### 7.1 Row mapping
@@ -141,7 +141,7 @@ Exposed as `window.ResultsApi` in the browser and `module.exports` in Node.
 | `nickname` | `state.nickname` |
 | `total_score` | `state.score` |
 | `correct_count` | answers where `correct` is true |
-| `bonuses_matched` | answers whose `points > 1` — the bonus pays 5, 3 or 2 for a matched bonus, 1 for a correct answer whose bonus was missed, 0 for a wrong answer |
+| `bonuses_matched` | **correct** answers whose `points > 1` — the bonus pays 5, 3 or 2 for a matched bonus, 1 for a correct answer whose bonus was missed, 0 for a wrong answer. The `correct` test is enforced rather than assumed, so a tampered state carrying points on a wrong answer still yields a row the `bonuses_within_correctes` constraint accepts. |
 | `elapsed_ms` | `Math.max(0, Math.round(state.elapsedMs))` |
 | `finished_at` | `state.finishedAt` (ISO 8601 string) |
 
@@ -240,12 +240,15 @@ state; `classifySaveError` returns `duplicate` for `409` and for a `23505` body 
 and resolves `saved`, `duplicate` and `failed` from a stubbed `fetch`.
 
 **Integration (`tests/app-check.html`, drives the real `index.html` in an iframe):** with `fetch`
-stubbed, finishing a contest shows "Saving your results…" then "Results saved."; a stubbed `409`
-shows the already-stored message with no retry button; a stubbed network failure shows the failure
-message with a working retry that succeeds on the second attempt; a reloaded finished run shows
-"Results already saved." without issuing a request.
+stubbed, finishing a contest shows the transient "Saving your results…" state before settling on
+"Results saved."; a stubbed `409` shows the already-stored message with no retry button; a stubbed
+network failure shows the failure message with a working retry that succeeds on the second attempt;
+a reloaded finished run shows "Results already saved." without issuing a request; and a save left in
+flight when `Play again` is pressed must not swallow the next run's save or stamp its marker.
 
-`tests/make-nostorage.js` requires no change: it rewrites `index.html` generically.
+`tests/make-nostorage.js` rewrites `index.html` generically, and additionally refuses to write its
+copy unless the blanking script for the Supabase key actually landed and no publishable key is
+present in the output — a skipped replacement would otherwise let a test post a real row.
 
 ## 12. Known limitations
 

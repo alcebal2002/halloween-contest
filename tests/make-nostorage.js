@@ -110,5 +110,24 @@ html = html
   .replace("<body>\n", "<body>\n" + STUB)
   .replace("</body>", DRIVER + "</body>");
 
+// String.replace skips silently when its target moves, and a copy that quietly
+// kept the real key would post a real row the first time a test played through
+// to the results screen. Refuse to write unless the blanking script landed and
+// no key leaked into the copy by any other route. Neither token appears in
+// index.html itself, so both checks are unambiguous here.
+if (html.indexOf("window.SUPABASE_CONFIG.anonKey") === -1) {
+  throw new Error(
+    "make-nostorage: the Supabase key was not blanked — index.html no longer " +
+    "contains <script src=\"/js/supabase-config.js\"></script>. " +
+    "Refusing to write a copy that would post real rows."
+  );
+}
+if (html.indexOf("sb_publishable") !== -1) {
+  throw new Error(
+    "make-nostorage: a publishable key is present in the generated copy. " +
+    "Refusing to write it."
+  );
+}
+
 fs.writeFileSync(target, html, "utf8");
 process.stdout.write("wrote " + path.relative(root, target) + " (" + html.length + " bytes)\n");
