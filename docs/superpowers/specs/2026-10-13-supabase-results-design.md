@@ -178,6 +178,7 @@ covering both a fresh finish and **Continue** from the welcome-back card.
 | `idle` | not yet attempted this session |
 | `saving` | request in flight |
 | `saved` | server confirmed; marker written |
+| `already` | The local marker matches this session — no request is made |
 | `duplicate` | server rejected the key as already present |
 | `failed` | network, timeout or server error; retry offered |
 

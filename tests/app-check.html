@@ -631,6 +631,47 @@
           " before=" + before);
     });
 
+    await astep("s4. reloading a finished run shows 'already saved' and sends nothing", async function () {
+      saveStub.mode = "success";
+      await reload();
+      resumeIfOffered();
+      await wait(120);
+      click($("btn-play-again"));
+      for (var i = 0; i < 10 && app().getView() !== "results"; i++) answerWrong();
+      await wait(120);
+      // Finishing writes the marker, so the reload that follows must stay quiet.
+      var savedBeforeReload = saveStub.calls.length === 1 && $("results-save").textContent === "Results saved.";
+      await reload();
+      resumeIfOffered();
+      await wait(150);
+      var line = $("results-save");
+      rec("s4. reloading a finished run shows 'already saved' and sends nothing",
+        savedBeforeReload &&
+          app().getView() === "results" &&
+          !line.hidden && line.textContent === "Results already saved." &&
+          saveStub.calls.length === 0,
+        "savedBeforeReload=" + savedBeforeReload + " text='" + line.textContent +
+          "' calls=" + saveStub.calls.length);
+    });
+
+    await astep("s5. Play again arms a fresh save for the new session id", async function () {
+      saveStub.mode = "success";
+      await reload();
+      resumeIfOffered();
+      await wait(120);
+      var before = saveStub.calls.length;
+      click($("btn-play-again"));
+      await wait(80);
+      for (var i = 0; i < 10 && app().getView() !== "results"; i++) answerWrong();
+      await wait(120);
+      var line = $("results-save");
+      rec("s5. Play again arms a fresh save for the new session id",
+        app().getView() === "results" &&
+          line.textContent === "Results saved." &&
+          saveStub.calls.length === before + 1,
+        "text='" + line.textContent + "' calls=" + saveStub.calls.length + " before=" + before);
+    });
+
     /* ---- report ---- */
     var failed = results.filter(function (r) { return !r.ok; });
     var verdict = document.getElementById("verdict");
