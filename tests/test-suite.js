@@ -868,5 +868,75 @@
     assertEqual(RA.buildResultRow(finishedState({ sessionId: "" })), null, "no session id");
   });
 
+  /* ---- Supabase results: the request ---- */
+
+  function saveConfig() {
+    return { url: "https://lyzuxvcsjavxhlovgeeu.supabase.co", anonKey: "sb_publishable_test_key_for_unit_tests" };
+  }
+  function saveRow() {
+    return {
+      session_id: "hc_abc-123", nickname: "Bat", total_score: 12,
+      correct_count: 4, bonuses_matched: 3, elapsed_ms: 91235,
+      finished_at: "2026-10-13T12:00:00.000Z"
+    };
+  }
+  function jsonResponse(status, body) {
+    return { ok: status >= 200 && status < 300, status: status, json: function () { return Promise.resolve(body); } };
+  }
+
+  test("saveResult posts the row with the publishable key and no upsert header", function () {
+    var seen = {};
+    var fetchImpl = function (url, opts) {
+      seen.url = url; seen.opts = opts;
+      return Promise.resolve(jsonResponse(201, {}));
+    };
+    return RA.saveResult(saveConfig(), saveRow(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, true, "a 201 is a save");
+      assertEqual(res.kind, "saved", "kind");
+      assertEqual(seen.url, "https://lyzuxvcsjavxhlovgeeu.supabase.co/rest/v1/contest_results", "endpoint");
+      assertEqual(seen.opts.method, "POST", "method");
+      assertEqual(seen.opts.headers["apikey"], saveConfig().anonKey, "apikey header");
+      assertEqual(seen.opts.headers["Authorization"], "Bearer " + saveConfig().anonKey, "bearer header");
+      assertEqual(seen.opts.headers["Prefer"], "return=minimal", "minimal representation");
+      assertEqual(JSON.parse(seen.opts.body).session_id, "hc_abc-123", "body carries the row");
+      var upsertHeader = Object.keys(seen.opts.headers).filter(function (h) {
+        return /resolution/i.test(h) || /merge/i.test(seen.opts.headers[h]);
+      });
+      assertEqual(upsertHeader.length, 0, "an upsert header must never be sent");
+    });
+  });
+
+  test("saveResult resolves duplicate on a 409 carrying 23505", function () {
+    var fetchImpl = function () {
+      return Promise.resolve(jsonResponse(409, {
+        code: "23505",
+        message: "duplicate key value violates unique constraint \"contest_results_pkey\"",
+        details: "Key (session_id)=(hc_abc-123) already exists.", hint: null
+      }));
+    };
+    return RA.saveResult(saveConfig(), saveRow(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, false, "a duplicate is not a save");
+      assertEqual(res.kind, "duplicate", "kind");
+    });
+  });
+
+  test("saveResult resolves failed when fetch rejects", function () {
+    var fetchImpl = function () { return Promise.reject(new TypeError("Failed to fetch")); };
+    return RA.saveResult(saveConfig(), saveRow(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, false, "a rejected request is not a save");
+      assertEqual(res.kind, "failed", "kind");
+      assert(res.detail.length > 0, "the detail should say what happened");
+    });
+  });
+
+  test("saveResult resolves failed on a 500 even when the body cannot be parsed", function () {
+    var fetchImpl = function () {
+      return Promise.resolve({ ok: false, status: 500, json: function () { return Promise.reject(new Error("bad json")); } });
+    };
+    return RA.saveResult(saveConfig(), saveRow(), fetchImpl).then(function (res) {
+      assertEqual(res.kind, "failed", "kind");
+    });
+  });
+
   return { tests: tests };
 });

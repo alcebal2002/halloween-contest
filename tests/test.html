@@ -25,23 +25,34 @@
   (function () {
     var list = document.getElementById("results");
     var failed = 0;
-    TestSuite.tests.forEach(function (t) {
-      var li = document.createElement("li");
-      try {
-        t.fn();
+    var summary = document.getElementById("summary");
+
+    function done() {
+      summary.textContent = (TestSuite.tests.length - failed) + " passed, " + failed + " failed";
+      summary.className = failed ? "fail" : "pass";
+      document.title = "tests: " + summary.textContent;
+    }
+
+    // Tests run in order and may return a promise, so each result is rendered
+    // only once it settles. Reporting before that would hide rejections.
+    function runOne(t) {
+      return Promise.resolve().then(function () { return t.fn(); }).then(function () {
+        var li = document.createElement("li");
         li.className = "pass";
         li.textContent = "PASS  " + t.name;
-      } catch (e) {
+        list.appendChild(li);
+      }, function (e) {
         failed++;
+        var li = document.createElement("li");
         li.className = "fail";
-        li.textContent = "FAIL  " + t.name + " — " + e.message;
-      }
-      list.appendChild(li);
-    });
-    document.getElementById("summary").textContent =
-      (TestSuite.tests.length - failed) + " passed, " + failed + " failed";
-    document.getElementById("summary").className = failed ? "fail" : "pass";
-    document.title = "tests: " + document.getElementById("summary").textContent;
+        li.textContent = "FAIL  " + t.name + " — " + (e && e.message ? e.message : e);
+        list.appendChild(li);
+      });
+    }
+
+    TestSuite.tests.reduce(function (chain, t) {
+      return chain.then(function () { return runOne(t); });
+    }, Promise.resolve()).then(done);
   })();
 </script>
 </body>

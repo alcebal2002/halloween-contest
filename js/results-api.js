@@ -53,6 +53,56 @@
     };
   }
 
+  // Always resolves — never rejects — so the caller can render the outcome
+  // without a catch. The ambient fetch is looked up at call time, which is what
+  // lets the browser harness stub window.fetch.
+  function saveResult(config, row, fetchImpl, timeoutMs) {
+    var doFetch = fetchImpl;
+    if (!doFetch) {
+      if (typeof fetch === "undefined") {
+        return Promise.resolve({ ok: false, kind: "failed", detail: "no fetch available" });
+      }
+      doFetch = function () { return fetch.apply(null, arguments); };
+    }
+
+    var timeout = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : DEFAULT_TIMEOUT_MS;
+    var controller = (typeof AbortController === "function") ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, timeout) : null;
+    var endpoint = String(config.url).replace(/\/+$/, "") + REST_PATH;
+
+    return Promise.resolve()
+      .then(function () {
+        return doFetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": config.anonKey,
+            "Authorization": "Bearer " + config.anonKey,
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify(row),
+          signal: controller ? controller.signal : undefined
+        });
+      })
+      .then(function (res) {
+        if (res && res.ok) return { ok: true, kind: "saved" };
+        var status = res ? res.status : 0;
+        var body = (res && typeof res.json === "function")
+          ? res.json().catch(function () { return null; })
+          : Promise.resolve(null);
+        return body.then(function (b) {
+          return { ok: false, kind: classifySaveError(status, b), detail: (b && b.message) || "" };
+        });
+      })
+      .catch(function (e) {
+        return { ok: false, kind: "failed", detail: (e && e.message) ? e.message : "network error" };
+      })
+      .then(function (outcome) {
+        if (timer) clearTimeout(timer);
+        return outcome;
+      });
+  }
+
   // 409 is PostgREST's answer to a primary-key collision; 23505 is the Postgres
   // unique-violation code, checked too in case a proxy reshapes the status.
   function classifySaveError(status, body) {
@@ -64,6 +114,7 @@
   return {
     isConfigured: isConfigured,
     buildResultRow: buildResultRow,
-    classifySaveError: classifySaveError
+    classifySaveError: classifySaveError,
+    saveResult: saveResult
   };
 });
