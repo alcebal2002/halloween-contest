@@ -60,6 +60,7 @@ var DRIVER = [
   "  out.push(\"nicknameKept=\" + HalloweenApp.getState().nickname);",
   "  out.push(\"bannerStillVisible=\" + !banner.hidden);",
   "  out.push(\"hudVisible=\" + !document.getElementById(\"hud\").hidden);",
+  "  out.push(\"saveStatusHidden=\" + document.getElementById(\"results-save\").hidden);",
   "",
   "  var checks = [",
   "    out[0] === \"stubActive=true\",",
@@ -71,7 +72,8 @@ var DRIVER = [
   "    out[6] === \"score=0\",",
   "    out[7] === \"nicknameKept=NoSave\",",
   "    out[8] === \"bannerStillVisible=true\",",
-  "    out[9] === \"hudVisible=true\"",
+  "    out[9] === \"hudVisible=true\",",
+  "    out[10] === \"saveStatusHidden=true\"",
   "  ];",
   "  var pass = checks.every(Boolean);",
   "",
@@ -100,6 +102,11 @@ html = html
   .replace("<title>Halloween Contest</title>", "<title>Halloween Contest — storage-blocked test</title>")
   .replace(/href="css\//g, 'href="/css/')
   .replace(/src="js\//g, 'src="/js/')
+  // The key ships in its own file, so the copy cannot rewrite it. Blank it
+  // immediately after that file loads, before app.js can reach the results
+  // screen and post a real row. Runs after the path rewrite above.
+  .replace("<script src=\"/js/supabase-config.js\"></script>",
+    "<script src=\"/js/supabase-config.js\"></script>\n<script>window.SUPABASE_CONFIG.anonKey = \"\";</script>")
   .replace("<body>\n", "<body>\n" + STUB)
   .replace("</body>", DRIVER + "</body>");
 

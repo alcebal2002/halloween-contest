@@ -70,6 +70,9 @@
       f.src = "../index.html?cb=" + Date.now();
       await loaded;
       await wait(400);
+      // Reaching the results screen must not post a real row: blank the key so
+      // ResultsApi.isConfigured() refuses and the status line stays hidden.
+      try { W().SUPABASE_CONFIG.anonKey = ""; } catch (e) { /* ignore */ }
       var d = D();
 
       checkScreen("nickname", "nickname");
@@ -134,6 +137,9 @@
           D().getElementById("results-review").children.length === 10,
         $("results-score").textContent + " / " + $("results-time").textContent + " / " +
           D().getElementById("results-review").children.length + " rows");
+      rec("results: no save status is shown when Supabase is not configured",
+        $("results-save").hidden && $("btn-results-retry").hidden,
+        "saveStatusHidden=" + $("results-save").hidden);
     } catch (e) {
       rec("harness ran to completion", false, "threw: " + e.message);
     }
