@@ -38,7 +38,7 @@ msedge --headless=new --dump-dom --virtual-time-budget=30000 \
   `js/questions.js` has broken.
 - **`app-check.html`** — drives the real `index.html` in an iframe: nickname validation, the
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
-  four-character tray on distinct colours, immediate
+  four-character tray with distinct colour rings and no fill, immediate
   feedback, the bonus round (open → pick four characters → first-attempt match pays 5 → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following
   round, the green flash on a partial match (locked controls, then empty slots for the next

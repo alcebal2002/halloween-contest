@@ -181,20 +181,24 @@
           "' checkDisabled=" + $("btn-bonus-check").disabled + " hud='" + hud() + "'");
     });
 
-    step("2a. the tray shows four Halloween characters on distinct coloured tiles", function () {
+    step("2a. the tray shows four Halloween characters with distinct colour rings and no fill", function () {
       var arts = $("bonus-bottles").querySelectorAll(".bottle-art");
       var labels = Array.prototype.map.call(arts, function (a) {
         return a.parentNode.querySelector(".bottle-label").textContent;
       });
       var glyphs = Array.prototype.map.call(arts, function (a) { return a.getAttribute("data-glyph"); });
+      // Each character is outlined by its own coloured ring, and the badge carries no
+      // background fill — only the image itself and the ring show colour.
+      var rings = Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).boxShadow; });
       var bgs = Array.prototype.map.call(arts, function (a) { return W().getComputedStyle(a).backgroundColor; });
-      var distinct = {}; bgs.forEach(function (c) { distinct[c] = true; });
+      var distinct = {}; rings.forEach(function (c) { distinct[c] = true; });
       var glyphSet = {}; glyphs.forEach(function (g) { glyphSet[g] = true; });
-      var allOpaque = bgs.every(function (c) { return c !== "rgba(0, 0, 0, 0)" && c !== "transparent"; });
-      rec("2a. the tray shows four Halloween characters on distinct coloured tiles",
+      var noFill = bgs.every(function (c) { return c === "rgba(0, 0, 0, 0)" || c === "transparent"; });
+      rec("2a. the tray shows four Halloween characters with distinct colour rings and no fill",
         arts.length === 4 && labels.join(",") === "Spider,Pumpkin,Ghost,Bat" &&
-          Object.keys(glyphSet).length === 4 && Object.keys(distinct).length === 4 && allOpaque,
-        "labels=" + labels.join("/") + " glyphs=" + glyphs.join("/") + " backgrounds=" + bgs.join(" | "));
+          Object.keys(glyphSet).length === 4 && Object.keys(distinct).length === 4 && noFill,
+        "labels=" + labels.join("/") + " glyphs=" + glyphs.join("/") + " fills=" + bgs.join(" | ") +
+          " rings=" + rings.join(" | "));
     });
 
     step("2c. Check stays disabled until all four bottles are picked", function () {
