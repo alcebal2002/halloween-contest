@@ -586,6 +586,51 @@
           " calls=" + saveStub.calls.length + " url=" + (call ? call.url : "none"));
     });
 
+    await astep("s2. a duplicate submission reports it and offers no retry", async function () {
+      saveStub.mode = "duplicate";
+      await reload();
+      resumeIfOffered();
+      // Start a new run: the previous session id is already in the local
+      // marker, so only a fresh one can exercise the server's duplicate rule.
+      click($("btn-play-again"));
+      for (var i = 0; i < 10 && app().getView() !== "results"; i++) answerWrong();
+      await wait(120);
+      var line = $("results-save");
+      var retry = $("btn-results-retry");
+      rec("s2. a duplicate submission reports it and offers no retry",
+        !line.hidden &&
+          line.textContent === "This session's results are already stored." &&
+          retry.hidden &&
+          saveStub.calls.length === 1,
+        "text='" + line.textContent + "' retryHidden=" + retry.hidden + " calls=" + saveStub.calls.length);
+    });
+
+    await astep("s3. a network failure offers a retry that succeeds on the second attempt", async function () {
+      saveStub.mode = "network";
+      await reload();
+      resumeIfOffered();
+      // The resumed run may attempt its own save before this one starts, so the
+      // count is measured from the moment the new run is armed.
+      await wait(120);
+      click($("btn-play-again"));
+      var before = saveStub.calls.length;
+      for (var i = 0; i < 10 && app().getView() !== "results"; i++) answerWrong();
+      await wait(120);
+      var line = $("results-save");
+      var retry = $("btn-results-retry");
+      var failedSeen = !line.hidden && line.textContent === "Couldn't save your results." && !retry.hidden;
+      saveStub.mode = "success";
+      click(retry);
+      await wait(120);
+      rec("s3. a network failure offers a retry that succeeds on the second attempt",
+        failedSeen &&
+          line.textContent === "Results saved." &&
+          retry.hidden &&
+          saveStub.calls.length === before + 2,
+        "failedSeen=" + failedSeen + " text='" + line.textContent + "' calls=" + saveStub.calls.length +
+          " before=" + before);
+    });
+
     /* ---- report ---- */
     var failed = results.filter(function (r) { return !r.ok; });
     var verdict = document.getElementById("verdict");
