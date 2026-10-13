@@ -178,12 +178,14 @@
       var fBtns = $("feedback-options").querySelectorAll(".option");
       var allDisabled = Array.prototype.every.call(fBtns, function (b) { return b.disabled; });
       var marked = fBtns[q.correctIndex].className.indexOf("is-correct") > -1;
+      var srHidden = $("feedback-verdict").classList.contains("sr-only");
       var st = app().getState();
-      rec("immediate feedback: 'Correct!', correct option marked, options locked, base point on the HUD",
+      rec("immediate feedback: 'Correct!' only for screen readers, correct option marked, options locked, score 1",
         app().getView() === "feedback" && $("feedback-verdict").textContent === "Correct!" &&
-          allDisabled && marked && st.score === 1 && hud() === "Total Points: 1 - Question 1/10",
+          srHidden && allDisabled && marked && st.score === 1 && hud() === "Total Points: 1 - Question 1/10",
         "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent +
-          " disabled=" + allDisabled + " marked=" + marked + " score=" + st.score + " hud='" + hud() + "'");
+          " srOnly=" + srHidden + " disabled=" + allDisabled + " marked=" + marked +
+          " score=" + st.score + " hud='" + hud() + "'");
     });
 
     /* ---- 1. resume during feedback ---- */

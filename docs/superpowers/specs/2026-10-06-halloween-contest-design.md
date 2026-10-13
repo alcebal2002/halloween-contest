@@ -38,7 +38,7 @@ The UI is a single page with five screen sections. One of them is visible at a t
 | `nickname` | Welcome | Title **"Halloween Contest"**, tagline, nickname input, **Start** button |
 | `welcomeBack` | Resume | "Welcome back, *nickname*", progress line ("Question 4 of 10", or "Finished - score X / M" when the stored phase is `results`). In that finished case the card also shows the run's elapsed time and finish time, then a blank gap, then **Continue** / **Start over**. **Continue** returns to the stored phase (`question`, `feedback`, or `results`) |
 | `question` | Quiz | Progress header, question text, three option buttons |
-| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green, verdict line ("Correct!" / "Not quite — correct answer: …"), **Next** button |
+| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green (the outcome is announced to screen readers via a visually hidden "Correct!" / "Not quite — correct answer: …" line; nothing is shown on screen), **Next** button |
 | `results` | Summary | Nickname, score `X / M`, finish timestamp, full answer review, **Play again** |
 
 Transition rules:
@@ -184,7 +184,7 @@ Dark and atmospheric, centered card layout, max-width 640px, responsive down to 
 | `localStorage` unavailable (private mode) | Keep state in memory; show a banner: "Progress can't be saved in this browser." |
 | Stored `questionOrder` no longer matches loaded questions (data file swapped mid-contest) | Discard stale progress, return to `nickname` with the field pre-filled and the note "The question set changed — starting over." |
 | `QUESTIONS` missing, empty, or all entries invalid | Error screen with a readable message instead of a blank page |
-| User reloads during `feedback` | The answer and `phase = "feedback"` are persisted; after the welcome-back card, **Continue** restores the verdict and **Next** button exactly as before |
+| User reloads during `feedback` | The answer and `phase = "feedback"` are persisted; after the welcome-back card, **Continue** restores the marked options (and the screen-reader verdict) and **Next** button exactly as before |
 | Empty nickname or longer than 20 chars | Inline validation message, no state change |
 | Double-click on an option | Buttons disabled on first click |
 | Answers with zero correct answers | Results screen still shows `lastAnswerAt` as the finish moment (no special case — `lastAnswerAt` tracks the latest answer regardless of correctness) |

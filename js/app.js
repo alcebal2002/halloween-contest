@@ -530,7 +530,9 @@
       el.fProgress.textContent = "Question " + (state.questionIndex + 1) + " of " + questions.length;
       el.fText.textContent = fq.text;
       el.fOptions.innerHTML = optionMarkup(fq, fq.correctIndex, "feedback", last ? last.selected : -1);
-      el.fVerdict.className = "verdict " + (lastFeedback && lastFeedback.correct ? "is-correct" : "is-wrong");
+      // Announce the outcome to screen readers only: on screen the correct option
+      // is already green and the wrong pick red, so no visible sentence is needed.
+      el.fVerdict.className = "sr-only";
       el.fVerdict.textContent = lastFeedback && lastFeedback.correct
         ? "Correct!"
         : "Not quite - correct answer: " + (lastFeedback ? lastFeedback.correctText : "");

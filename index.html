@@ -99,7 +99,9 @@
     <p id="feedback-progress" class="progress"></p>
     <h2 id="feedback-text"></h2>
     <div id="feedback-options" class="options"></div>
-    <p id="feedback-verdict" class="verdict" aria-live="polite"></p>
+    <!-- On screen the correct option is already green and the wrong pick red, so
+         the verdict is not shown; it stays for screen readers. -->
+    <p id="feedback-verdict" class="sr-only" aria-live="polite"></p>
     <button id="btn-next" class="btn btn-primary" type="button">Next</button>
   </section>
 
