@@ -242,6 +242,26 @@
           " rings=" + rings.join(" | "));
     });
 
+    step("2a2. the spider is painted a distinct red instead of a dark emoji", function () {
+      var art = $("bonus-bottles").querySelector(".bottle-spider.bottle-art");
+      var ghost = $("bonus-bottles").querySelector(".bottle-ghost.bottle-art");
+      var bat = $("bonus-bottles").querySelector(".bottle-bat.bottle-art");
+      var red = "rgb(239, 68, 68)";
+      var ring = art ? W().getComputedStyle(art).boxShadow : "";
+      // A platform emoji cannot be recoloured by CSS, so the spider is drawn as a
+      // masked silhouette painted with the same --liquid that colours its ring.
+      var paint = art ? W().getComputedStyle(art, "::before") : null;
+      var ember = art ? W().getComputedStyle(art, "::after").content : "";
+      rec("2a2. the spider is painted a distinct red instead of a dark emoji",
+        !!art && ring.indexOf(red + " 0px 0px 0px 2px inset") === 0 &&
+          !!paint && paint.backgroundColor === red &&
+          ember.indexOf("\uD83D\uDD77") === -1 &&
+          W().getComputedStyle(ghost).boxShadow.indexOf(red) === -1 &&
+          W().getComputedStyle(bat).boxShadow.indexOf(red) === -1,
+        "ring=" + ring + " paint=" + (paint ? paint.backgroundColor : "none") +
+          " ember=" + ember);
+    });
+
     step("2c. Check stays disabled until all four bottles are picked", function () {
       var target = app().getState().bonus.target;
       click(bottles()[target[0]]);
@@ -271,6 +291,19 @@
         slots.length === 4 && $("bonus-slots").querySelectorAll(".slot.is-filled").length === 4 &&
           mismatched === 0,
         "mismatched=" + mismatched + " slots=" + detail);
+    });
+
+    step("2c3. a filled spider slot paints that same red, keeping its glyph text", function () {
+      var glyph = $("bonus-slots").querySelector(".slot.is-filled.slot-0 .slot-glyph");
+      var red = "rgb(239, 68, 68)";
+      var paint = glyph ? W().getComputedStyle(glyph, "::after") : null;
+      var color = glyph ? W().getComputedStyle(glyph).color : "";
+      // The emoji stays in the DOM (2c2 reads it) but is hidden behind the silhouette.
+      rec("2c3. a filled spider slot paints that same red, keeping its glyph text",
+        !!glyph && glyph.textContent.indexOf("\uD83D\uDD77") > -1 &&
+          !!paint && paint.backgroundColor === red && color === "rgba(0, 0, 0, 0)",
+        "paint=" + (paint ? paint.backgroundColor : "none") + " color=" + color +
+          " text=" + (glyph ? glyph.textContent : "none"));
     });
 
     step("2d. matching the order on the first attempt pays 5 points", function () {

@@ -12,6 +12,9 @@
   --radius: 14px;
   --serif: "Creepster", "Georgia", "Times New Roman", serif;
   --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Spider silhouette, used as a mask. A platform emoji ignores `color`, so the
+     one character that has to be recoloured is painted from --liquid instead. */
+  --spider-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Cg%20fill='%23000'%3E%3Cellipse%20cx='16'%20cy='20'%20rx='6'%20ry='7.5'/%3E%3Cellipse%20cx='16'%20cy='10.5'%20rx='4.5'%20ry='4.5'/%3E%3C/g%3E%3Cg%20stroke='%23000'%20stroke-width='2'%20stroke-linecap='round'%20fill='none'%3E%3Cpath%20d='M12%207.5%204.5%203'/%3E%3Cpath%20d='M11.7%2010.5%203%209'/%3E%3Cpath%20d='M11.7%2013.5%203.5%2018.5'/%3E%3Cpath%20d='M12.5%2017%207%2023.5'/%3E%3Cpath%20d='M20%207.5%2027.5%203'/%3E%3Cpath%20d='M20.3%2010.5%2029%209'/%3E%3Cpath%20d='M20.3%2013.5%2028.5%2018.5'/%3E%3Cpath%20d='M19.5%2017%2025%2023.5'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -296,10 +299,24 @@ h2 {
 .bottle-label { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; }
 .bottle.is-picked .bottle-label { color: var(--bone); }
 
-.bottle-spider  { --liquid: #86efac; --liquid-soft: rgba(34, 197, 94, 0.30);  --tile: #22c55e; }
+/* The spider reads as a dark speck next to the bat on a small screen, so it gets
+   a red silhouette of its own. #ef4444 rather than --red, which means "wrong". */
+.bottle-spider  { --liquid: #ef4444; --liquid-soft: rgba(239, 68, 68, 0.30); --tile: #ef4444; }
 .bottle-pumpkin { --liquid: #a5b4fc; --liquid-soft: rgba(79, 70, 229, 0.30);  --tile: #4f46e5; }
 .bottle-ghost   { --liquid: #fca5a5; --liquid-soft: rgba(220, 38, 38, 0.30);  --tile: #dc2626; }
 .bottle-bat     { --liquid: #fde68a; --liquid-soft: rgba(245, 158, 11, 0.30); --tile: #f59e0b; }
+
+/* The emoji stays in data-glyph (tests and the slot both read it) but is no
+   longer painted here — the silhouette takes its place, in the ring's colour. */
+.bottle-spider.bottle-art::after { content: ""; }
+.bottle-spider.bottle-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--liquid);
+  -webkit-mask: var(--spider-glyph) center / 1em no-repeat;
+  mask: var(--spider-glyph) center / 1em no-repeat;
+}
 
 .slots-label {
   text-align: center;
@@ -341,10 +358,22 @@ h2 {
   box-shadow: inset 0 0 0 3px var(--liquid);
   color: var(--liquid);
 }
-.slot-0 { --liquid: #86efac; --liquid-soft: rgba(34, 197, 94, 0.30);  --tile: #22c55e; }
+.slot-0 { --liquid: #ef4444; --liquid-soft: rgba(239, 68, 68, 0.30); --tile: #ef4444; }
 .slot-1 { --liquid: #a5b4fc; --liquid-soft: rgba(79, 70, 229, 0.30);  --tile: #4f46e5; }
 .slot-2 { --liquid: #fca5a5; --liquid-soft: rgba(220, 38, 38, 0.30);  --tile: #dc2626; }
 .slot-3 { --liquid: #fde68a; --liquid-soft: rgba(245, 158, 11, 0.30); --tile: #f59e0b; }
+
+/* Same swap in an order slot: the emoji text is kept (2c2 compares it with the
+   tile) but hidden behind the silhouette, which the inset ring still frames. */
+.slot.is-filled.slot-0 .slot-glyph { color: transparent; position: relative; }
+.slot.is-filled.slot-0 .slot-glyph::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--liquid);
+  -webkit-mask: var(--spider-glyph) center / 1em no-repeat;
+  mask: var(--spider-glyph) center / 1em no-repeat;
+}
 
 /* Positions the last check got right (spec §10.3): the box border flashes neon
    green for a moment before the order is cleared, so the player learns which
