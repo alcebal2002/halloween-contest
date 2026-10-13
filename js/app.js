@@ -18,7 +18,6 @@
   // Spider, pumpkin, ghost, bat — same order as the tiles in index.html.
   var BOTTLE_GLYPHS = ["\uD83D\uDD77\uFE0F", "\uD83C\uDF83", "\uD83D\uDC7B", "\uD83E\uDD87"];
   var BOTTLE_NAMES = ["Spider", "Pumpkin", "Ghost", "Bat"];
-  var SLOT_LABELS = ["1st", "2nd", "3rd", "4th"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
 
   var SCREENS = ["screen-nickname", "screen-instructions", "screen-welcome-back", "screen-question",
@@ -356,7 +355,6 @@
         (matched && filled ? " is-matched" : "") +
         (rings && rings[i] && filled ? " is-correct-pos" : "");
       markup += '<li class="' + cls + '">' +
-        '<span class="slot-pos" aria-hidden="true">' + SLOT_LABELS[i] + "</span>" +
         '<span class="slot-glyph"' + (filled ? "" : ' aria-hidden="true"') + ">" +
         (filled ? BOTTLE_GLYPHS[bottle] : "&mdash;") + "</span>" +
         (filled ? '<span class="sr-only">' + BOTTLE_NAMES[bottle] + "</span>" : "") +
