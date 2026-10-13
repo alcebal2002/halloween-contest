@@ -1,15 +1,16 @@
 # Halloween Contest — test runners
 
-Seven runners, one page each. All of them report a verdict you can read at a glance
+Eight runners, one page each. All of them report a verdict you can read at a glance
 (the browser runners put it in the `<title>`), so a headless run is as readable as a
 manual one.
 
 | Runner | How to run | Expected verdict |
 | --- | --- | --- |
-| `node tests/run-tests.js` | Node ≥ 14, from the project root | `73 passed, 0 failed`, exit code `0` |
-| `tests/test.html` | open directly (`file://`) or serve the folder | `73 passed, 0 failed` |
+| `node tests/run-tests.js` | Node ≥ 14, from the project root | `92 passed, 0 failed`, exit code `0` |
+| `tests/test.html` | open directly (`file://`) or serve the folder | `92 passed, 0 failed` |
 | `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `39 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `37 passed, 0 failed` |
+| `tests/stats-check.html` | serve the folder, open `/tests/stats-check.html` | `22 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
 | `tests/boot-variants.html?variant=getitem` | serve the folder, open `/tests/boot-variants.html?variant=getitem` | `7 passed, 0 failed` |
 | `.superpowers/sdd/halloween-contest/nostorage-index.html` | serve the folder, open that path | `<title>nostorage: PASS` |
@@ -73,6 +74,20 @@ profile has to be fresh.
   this walkthrough must never post a row. (Edge/Chrome headless cannot be
   windowed below ~492px, so a `--window-size=360` screenshot is a left-crop of a wider layout
   and lies about overflow — this iframe does not.)
+- **`stats-check.html`** — drives the real `stats.html` through an `srcdoc` iframe with `fetch`
+  stubbed *before* any page script runs (`app-check.html` stubs after `load`, which is too late for
+  a page that fetches on boot): ranks 1-10 over ten distinct names, a repeat row greyed beneath its
+  own name with an empty rank cell, a `<img src=x onerror=...>` nickname landing as literal text
+  with no element created, score/correct/bonus/time/finished each landing in their own column,
+  malformed numbers and an unparseable timestamp coercing instead of throwing, the three-row
+  loading skeleton, the empty state's copy and **Play now** link, an error that leaves the rendered
+  rows untouched, an error on *first* load falling through to the message instead of parking the
+  skeleton, boot fetching and rendering on its own, a failed refresh followed by a working
+  recovery, a short injected refresh interval, a load in flight never being overlapped,
+  `visibilitychange` loading immediately, an unconfigured config showing its message with zero
+  requests, and the seven columns reflowed inside a genuine 360px iframe without horizontal scroll.
+  It never contacts the live project: the stub intercepts both `fetch` and `SUPABASE_CONFIG`, so
+  the not-configured path is reachable without editing `js/supabase-config.js`.
 - **`boot-variants.html`** — injects a fault before `js/app.js` into a copy of the real page
   (no duplicated markup): an empty question pool, and storage that accepts writes but throws
   on reads.
