@@ -1,12 +1,12 @@
 (function (root, factory) {
   "use strict";
-  var GL = (typeof module !== "undefined" && module.exports)
-    ? require("../js/game-logic.js")
-    : root.GameLogic;
-  var api = factory(GL);
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  var isNode = (typeof module !== "undefined" && module.exports);
+  var GL = isNode ? require("../js/game-logic.js") : root.GameLogic;
+  var RA = isNode ? require("../js/results-api.js") : root.ResultsApi;
+  var api = factory(GL, RA);
+  if (isNode) module.exports = api;
   else root.TestSuite = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (GL) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA) {
   "use strict";
 
   var tests = [];
@@ -775,6 +775,40 @@
       assertEqual(GL.validateStoredState(broken, pool), null,
         "invalid recorded order accepted: " + JSON.stringify(bad));
     });
+  });
+
+  /* ---- Supabase results: configuration and error classification ---- */
+
+  test("isConfigured accepts a real URL and publishable key", function () {
+    assertEqual(RA.isConfigured({
+      url: "https://lyzuxvcsjavxhlovgeeu.supabase.co",
+      anonKey: "sb_publishable_1RuEXLVz36fvPQHs27DRQA_rmOFvNej"
+    }), true, "a correctly shaped config must be accepted");
+  });
+
+  test("isConfigured rejects a blank key, a short key and a PASTE placeholder", function () {
+    var url = "https://lyzuxvcsjavxhlovgeeu.supabase.co";
+    assertEqual(RA.isConfigured({ url: url, anonKey: "" }), false, "blank key");
+    assertEqual(RA.isConfigured({ url: url, anonKey: "sb_publishable_1" }), false, "too short");
+    assertEqual(RA.isConfigured({ url: url, anonKey: "PASTE_YOUR_KEY_HERE" }), false, "placeholder");
+  });
+
+  test("isConfigured rejects a missing, non-https or malformed config", function () {
+    assertEqual(RA.isConfigured(null), false, "null config");
+    assertEqual(RA.isConfigured({}), false, "empty object");
+    assertEqual(RA.isConfigured({ url: "http://example.com", anonKey: "x".repeat(40) }), false, "http");
+    assertEqual(RA.isConfigured({ url: "not-a-url", anonKey: "x".repeat(40) }), false, "no scheme");
+  });
+
+  test("classifySaveError maps 409 and 23505 to duplicate", function () {
+    assertEqual(RA.classifySaveError(409, null), "duplicate", "status 409");
+    assertEqual(RA.classifySaveError(400, { code: "23505" }), "duplicate", "body code 23505");
+  });
+
+  test("classifySaveError maps every other outcome to failed", function () {
+    assertEqual(RA.classifySaveError(500, null), "failed", "500");
+    assertEqual(RA.classifySaveError(400, { code: "23514" }), "failed", "check violation");
+    assertEqual(RA.classifySaveError(0, null), "failed", "no response at all");
   });
 
   return { tests: tests };
