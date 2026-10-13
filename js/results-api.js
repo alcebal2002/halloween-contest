@@ -20,6 +20,39 @@
     return true;
   }
 
+  // Points are 5/3/2 for a matched bonus, 1 for a correct answer whose bonus was
+  // missed, and 0 for a wrong answer — so anything above 1 is a won bonus.
+  function pointsOf(answer) {
+    if (typeof answer.points === "number") return answer.points;
+    return answer.correct ? 1 : 0;
+  }
+
+  // Maps a finished contest to the row stored in contest_results. Returns null
+  // for anything that is not a genuinely finished run, so the caller can skip
+  // the request rather than send incomplete data.
+  function buildResultRow(state) {
+    if (!state || typeof state.sessionId !== "string" || state.sessionId === "") return null;
+    if (!state.finishedAt || !Array.isArray(state.answers) || state.answers.length === 0) return null;
+
+    var correct = 0;
+    var bonuses = 0;
+    state.answers.forEach(function (a) {
+      if (!a) return;
+      if (a.correct) correct++;
+      if (pointsOf(a) > 1) bonuses++;
+    });
+
+    return {
+      session_id: state.sessionId,
+      nickname: String(state.nickname || ""),
+      total_score: Number(state.score) || 0,
+      correct_count: correct,
+      bonuses_matched: bonuses,
+      elapsed_ms: Math.max(0, Math.round(Number(state.elapsedMs) || 0)),
+      finished_at: state.finishedAt
+    };
+  }
+
   // 409 is PostgREST's answer to a primary-key collision; 23505 is the Postgres
   // unique-violation code, checked too in case a proxy reshapes the status.
   function classifySaveError(status, body) {
@@ -30,6 +63,7 @@
 
   return {
     isConfigured: isConfigured,
+    buildResultRow: buildResultRow,
     classifySaveError: classifySaveError
   };
 });

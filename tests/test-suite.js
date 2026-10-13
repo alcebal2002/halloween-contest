@@ -811,5 +811,62 @@
     assertEqual(RA.classifySaveError(0, null), "failed", "no response at all");
   });
 
+  /* ---- Supabase results: row mapping ---- */
+
+  function finishedState(overrides) {
+    var base = {
+      sessionId: "hc_abc-123",
+      nickname: "Bat",
+      score: 12,
+      elapsedMs: 91234.6,
+      finishedAt: "2026-10-13T12:00:00.000Z",
+      answers: [
+        { questionId: 1, selected: 0, correct: true,  points: 5 },
+        { questionId: 2, selected: 1, correct: true,  points: 3 },
+        { questionId: 3, selected: 2, correct: true,  points: 2 },
+        { questionId: 4, selected: 0, correct: true,  points: 1 },
+        { questionId: 5, selected: 1, correct: false, points: 0 }
+      ]
+    };
+    if (overrides) {
+      for (var k in overrides) if (Object.prototype.hasOwnProperty.call(overrides, k)) base[k] = overrides[k];
+    }
+    return base;
+  }
+
+  test("buildResultRow maps a finished state to the seven stored columns", function () {
+    var row = RA.buildResultRow(finishedState());
+    assertEqual(row.session_id, "hc_abc-123", "session_id");
+    assertEqual(row.nickname, "Bat", "nickname");
+    assertEqual(row.total_score, 12, "total_score");
+    assertEqual(row.correct_count, 4, "correct_count counts every correct answer");
+    assertEqual(row.bonuses_matched, 3, "bonuses_matched counts points > 1 only");
+    assertEqual(row.elapsed_ms, 91235, "elapsed_ms is rounded to whole ms");
+    assertEqual(row.finished_at, "2026-10-13T12:00:00.000Z", "finished_at passes through unchanged");
+    assertEqual(Object.keys(row).length, 7, "no extra columns are invented");
+  });
+
+  test("buildResultRow backfills a missing points field the way game-logic does", function () {
+    var row = RA.buildResultRow(finishedState({
+      answers: [
+        { questionId: 1, selected: 0, correct: true },
+        { questionId: 2, selected: 1, correct: false }
+      ]
+    }));
+    assertEqual(row.correct_count, 1, "correct_count");
+    assertEqual(row.bonuses_matched, 0, "a correct answer without points is not a bonus");
+  });
+
+  test("buildResultRow never returns a negative elapsed time", function () {
+    assertEqual(RA.buildResultRow(finishedState({ elapsedMs: -5 })).elapsed_ms, 0, "clamped at zero");
+  });
+
+  test("buildResultRow refuses a state that is not finished", function () {
+    assertEqual(RA.buildResultRow(null), null, "null state");
+    assertEqual(RA.buildResultRow(finishedState({ finishedAt: null })), null, "no finishedAt");
+    assertEqual(RA.buildResultRow(finishedState({ answers: [] })), null, "no answers");
+    assertEqual(RA.buildResultRow(finishedState({ sessionId: "" })), null, "no session id");
+  });
+
   return { tests: tests };
 });
