@@ -75,6 +75,9 @@
   function boot() {
     el = {
       banner: $("storage-banner"),
+      mastheadDeco: $("masthead-deco"),
+      mastheadTitle: $("masthead-title"),
+      mastheadTagline: $("masthead-tagline"),
       hud: $("hud"),
       hudPoints: $("hud-points"),
       hudQuestion: $("hud-question"),
@@ -372,8 +375,18 @@
     el.hudQuestion.textContent = "Question " + number + "/" + questions.length;
   }
 
+  // The bonus round swaps the shared masthead for its own title: the icons and
+  // tagline step aside and "Poison Bonus" takes the same style as the game title.
+  function updateMasthead() {
+    var onBonus = view === "bonus";
+    el.mastheadDeco.hidden = onBonus;
+    el.mastheadTagline.hidden = onBonus;
+    el.mastheadTitle.textContent = onBonus ? "Poison Bonus" : "Halloween Contest";
+  }
+
   function render() {
     updateHud();
+    updateMasthead();
     SCREENS.forEach(function (id) { $(id).hidden = true; });
 
     if (view === "nickname") {
