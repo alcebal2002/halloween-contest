@@ -32,7 +32,7 @@ Success criteria:
 | 3 | Repeats of a top-10 name | **Every** such row is shown, greyed, directly after its own best row. The list may therefore exceed 10 rows while never exceeding 10 distinct names. Rows belonging to names outside the top 10 are dropped. |
 | 4 | "Elapsed timestamp" | It is a **duration**, not a point in time. Rendered with `GameLogic.formatDuration` — the same function the results screen already uses — so the leaderboard reads exactly as the player's own result did. |
 | 5 | Finish time | `GameLogic.formatTimestamp`, likewise already used by the results screen. |
-| 6 | Correct / Bonus display | Plain counts (`8`, `3`), **not** `8/10`. `QUESTIONS_PER_CONTEST` exists in `js/game-logic.js` but is absent from its export list, so `/10` would hard-code the total and start lying if `js/questions.js` ever changed length. |
+| 6 | Correct / Bonus display | Plain counts (`8`, `3`), **not** `8/10`. `QUESTIONS_PER_CONTEST` *is* exported, so `/10` is available — it is declined on presentation, not on feasibility: the Bonus column has no natural denominator, and `8/10` beside a bare `3` would make two adjacent count columns read on different scales, which costs at 360px where every character is paid for. |
 | 7 | Failure UX | Unlike the results screen — where a duplicate permanently ends retry — a leaderboard failure is **transient**: the message shows, the manual Refresh works, and automatic polling keeps running. |
 | 8 | Connection approach | Direct REST with `fetch`, reusing `js/results-api.js`. No Supabase client library, no CDN script. |
 | 9 | Where the ranking lives | New module `js/leaderboard.js`, UMD/ES5, so the pure algorithm is exercisable from Node. |
