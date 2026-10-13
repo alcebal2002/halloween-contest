@@ -992,5 +992,98 @@
     });
   });
 
+  /* ---- Supabase results: the leaderboard fetch ---- */
+
+  test("fetchResults issues a windowed GET ordered by score", function () {
+    var seen = {};
+    var fetchImpl = function (url, opts) {
+      seen.url = url; seen.opts = opts;
+      return Promise.resolve(jsonResponse(200, []));
+    };
+    return RA.fetchResults(saveConfig(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, true, "a 200 with an array is a load");
+      assertEqual(res.kind, "loaded", "kind");
+      assertEqual(res.rows.length, 0, "an empty board is still a load");
+      assertEqual(seen.url,
+        "https://lyzuxvcsjavxhlovgeeu.supabase.co/rest/v1/contest_results" +
+        "?select=session_id,nickname,total_score,correct_count,bonuses_matched,elapsed_ms,finished_at" +
+        "&order=total_score.desc,created_at.asc&limit=500", "windowed, score-descending endpoint");
+      assertEqual(seen.opts.method, "GET", "method");
+      assertEqual(seen.opts.headers["apikey"], saveConfig().anonKey, "apikey header");
+      assertEqual(seen.opts.headers["Authorization"], "Bearer " + saveConfig().anonKey, "bearer header");
+      assertEqual(seen.opts.body, undefined, "a GET carries no body");
+    });
+  });
+
+  test("fetchResults returns the rows the server sent", function () {
+    var rows = [{ nickname: "Bat", total_score: 12 }];
+    var fetchImpl = function () { return Promise.resolve(jsonResponse(200, rows)); };
+    return RA.fetchResults(saveConfig(), fetchImpl).then(function (res) {
+      assertEqual(res.rows.length, 1, "row count");
+      assertEqual(res.rows[0].nickname, "Bat", "row identity");
+    });
+  });
+
+  test("fetchResults resolves unconfigured without issuing a request", function () {
+    var calls = 0;
+    var fetchImpl = function () { calls++; return Promise.resolve(jsonResponse(200, [])); };
+    var bad = { url: "https://example.supabase.co", anonKey: "PASTE_YOUR_KEY_HERE" };
+    return RA.fetchResults(bad, fetchImpl).then(function (res) {
+      assertEqual(res.ok, false, "not a load");
+      assertEqual(res.kind, "unconfigured", "kind");
+      assertEqual(calls, 0, "an unconfigured config must never reach the network");
+    });
+  });
+
+  test("fetchResults resolves failed on a non-2xx status", function () {
+    var fetchImpl = function () { return Promise.resolve(jsonResponse(500, { message: "boom" })); };
+    return RA.fetchResults(saveConfig(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, false, "a 500 is not a load");
+      assertEqual(res.kind, "failed", "kind");
+    });
+  });
+
+  test("fetchResults resolves failed when the body is not an array", function () {
+    var fetchImpl = function () { return Promise.resolve(jsonResponse(200, { hint: "not rows" })); };
+    return RA.fetchResults(saveConfig(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, false, "an object body is not a leaderboard");
+      assertEqual(res.kind, "failed", "kind");
+    });
+  });
+
+  test("fetchResults resolves failed when fetch rejects", function () {
+    var fetchImpl = function () { return Promise.reject(new TypeError("Failed to fetch")); };
+    return RA.fetchResults(saveConfig(), fetchImpl).then(function (res) {
+      assertEqual(res.ok, false, "a rejected request is not a load");
+      assertEqual(res.kind, "failed", "kind");
+      assert(res.detail.length > 0, "the detail should say what happened");
+    });
+  });
+
+  test("fetchResults times out a request that never settles", function () {
+    var hanging = function () { return new Promise(function () { /* never settles */ }); };
+    return RA.fetchResults(saveConfig(), hanging, 30).then(function (res) {
+      assertEqual(res.ok, false, "a hung request is not a load");
+      assertEqual(res.kind, "failed", "kind");
+      assert(res.detail.indexOf("timed out") !== -1, "detail names the timeout: " + res.detail);
+    });
+  });
+
+  test("fetchResults never throws on a config it cannot read", function () {
+    var fetchImpl = function () { return Promise.resolve(jsonResponse(200, [])); };
+    var threw = null;
+    var result = null;
+    try {
+      result = RA.fetchResults(null, fetchImpl);
+    } catch (e) {
+      threw = e;
+    }
+    assertEqual(threw, null, "a bad config must resolve, not throw");
+    return result.then(function (res) {
+      assertEqual(res.ok, false, "nothing was sent");
+      assertEqual(res.kind, "unconfigured", "kind");
+    });
+  });
+
   return { tests: tests };
 });

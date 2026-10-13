@@ -8,6 +8,9 @@
 
   var DEFAULT_TIMEOUT_MS = 15000;
   var REST_PATH = "/rest/v1/contest_results";
+  var SELECT_COLUMNS = "session_id,nickname,total_score,correct_count,bonuses_matched,elapsed_ms,finished_at";
+  var ORDER_CLAUSE = "total_score.desc,created_at.asc";
+  var FETCH_LIMIT = 500;
 
   // True only when the config carries a real https endpoint and a key that is
   // neither empty nor the placeholder shipped in supabase-config.js.
@@ -123,6 +126,75 @@
     });
   }
 
+  // Reads the leaderboard window. Same contract as saveResult: it always
+  // resolves — never rejects, never throws — so the board can be updated
+  // without a catch. The ambient fetch is looked up at call time so a harness
+  // can stub window.fetch.
+  //
+  // Ranking is done client-side against a plain score-descending window rather
+  // than filtering on nickname: nicknames are content-unvalidated, and sending
+  // them back inside PostgREST's `nickname=in.(...)` grammar would mean
+  // escaping attacker-shaped strings into a filter expression.
+  function fetchResults(config, fetchImpl, timeoutMs) {
+    if (!isConfigured(config)) {
+      return Promise.resolve({ ok: false, kind: "unconfigured" });
+    }
+
+    var doFetch = fetchImpl;
+    if (!doFetch) {
+      if (typeof fetch === "undefined") {
+        return Promise.resolve({ ok: false, kind: "failed", detail: "no fetch available" });
+      }
+      doFetch = function () { return fetch.apply(null, arguments); };
+    }
+
+    var timeout = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : DEFAULT_TIMEOUT_MS;
+    var controller = (typeof AbortController === "function") ? new AbortController() : null;
+    var timer = null;
+
+    var request = Promise.resolve()
+      .then(function () {
+        var endpoint = String(config.url).replace(/\/+$/, "") + REST_PATH
+          + "?select=" + SELECT_COLUMNS
+          + "&order=" + ORDER_CLAUSE
+          + "&limit=" + FETCH_LIMIT;
+        return doFetch(endpoint, {
+          method: "GET",
+          headers: {
+            "apikey": config.anonKey,
+            "Authorization": "Bearer " + config.anonKey
+          },
+          signal: controller ? controller.signal : undefined
+        });
+      })
+      .then(function (res) {
+        if (!res || !res.ok) {
+          return { ok: false, kind: "failed", detail: "status " + (res ? res.status : 0) };
+        }
+        return Promise.resolve(res.json()).then(function (rows) {
+          if (!Array.isArray(rows)) return { ok: false, kind: "failed", detail: "unexpected payload" };
+          return { ok: true, kind: "loaded", rows: rows };
+        }, function () {
+          return { ok: false, kind: "failed", detail: "unreadable payload" };
+        });
+      })
+      .catch(function (e) {
+        return { ok: false, kind: "failed", detail: (e && e.message) ? e.message : "network error" };
+      });
+
+    var expired = new Promise(function (resolve) {
+      timer = setTimeout(function () {
+        if (controller) controller.abort();
+        resolve({ ok: false, kind: "failed", detail: "timed out" });
+      }, timeout);
+    });
+
+    return Promise.race([request, expired]).then(function (outcome) {
+      if (timer) clearTimeout(timer);
+      return outcome;
+    });
+  }
+
   // 409 is PostgREST's answer to a primary-key collision; 23505 is the Postgres
   // unique-violation code, checked too in case a proxy reshapes the status.
   function classifySaveError(status, body) {
@@ -135,6 +207,7 @@
     isConfigured: isConfigured,
     buildResultRow: buildResultRow,
     classifySaveError: classifySaveError,
-    saveResult: saveResult
+    saveResult: saveResult,
+    fetchResults: fetchResults
   };
 });
