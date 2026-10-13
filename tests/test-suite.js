@@ -3,10 +3,11 @@
   var isNode = (typeof module !== "undefined" && module.exports);
   var GL = isNode ? require("../js/game-logic.js") : root.GameLogic;
   var RA = isNode ? require("../js/results-api.js") : root.ResultsApi;
-  var api = factory(GL, RA, root);
+  var LB = isNode ? require("../js/leaderboard.js") : root.Leaderboard;
+  var api = factory(GL, RA, LB, root);
   if (isNode) module.exports = api;
   else root.TestSuite = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, rootRef) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, rootRef) {
   "use strict";
 
   var tests = [];
@@ -1083,6 +1084,117 @@
       assertEqual(res.ok, false, "nothing was sent");
       assertEqual(res.kind, "unconfigured", "kind");
     });
+  });
+
+  /* ---- Leaderboard: ranking ---- */
+
+  function lbRow(nickname, score, createdAt) {
+    return {
+      session_id: "s_" + nickname + "_" + score,
+      nickname: nickname,
+      total_score: score,
+      correct_count: 4,
+      bonuses_matched: 2,
+      elapsed_ms: 91000,
+      finished_at: "2026-10-13T12:00:00.000Z",
+      created_at: createdAt || "2026-10-13T12:00:00.000Z"
+    };
+  }
+
+  test("rankRows ranks ten distinct names in order with no repeats", function () {
+    var rows = [];
+    for (var i = 0; i < 14; i++) rows.push(lbRow("Player" + i, 100 - i));
+    var out = LB.rankRows(rows, 10);
+    assertEqual(out.length, 10, "truncated to ten rows");
+    for (var j = 0; j < out.length; j++) {
+      assertEqual(out[j].nickname, "Player" + j, "rank " + (j + 1) + " wrong");
+      assertEqual(out[j].repeat, false, "a distinct name must not be a repeat");
+    }
+  });
+
+  test("rankRows emits a repeat row directly beneath its own best row", function () {
+    var rows = [lbRow("Bat", 90), lbRow("Cat", 80), lbRow("Bat", 70), lbRow("Dog", 60)];
+    var out = LB.rankRows(rows, 10);
+    assertEqual(out.length, 4, "three names, one of them twice");
+    assertEqual(out[0].nickname, "Bat"); assertEqual(out[0].repeat, false, "Bat best");
+    assertEqual(out[1].nickname, "Bat"); assertEqual(out[1].repeat, true, "Bat repeat sits with its name");
+    assertEqual(out[2].nickname, "Cat"); assertEqual(out[2].repeat, false, "Cat ranks second");
+    assertEqual(out[2].total_score, 80, "Cat keeps its own score");
+    assertEqual(out[3].nickname, "Dog"); assertEqual(out[3].repeat, false, "Dog ranks third");
+  });
+
+  test("rankRows gives the earlier arrival the higher rank when scores tie", function () {
+    var rows = [
+      lbRow("Alpha", 50, "2026-10-13T10:00:00.000Z"),
+      lbRow("Beta", 50, "2026-10-13T09:00:00.000Z")
+    ];
+    var out = LB.rankRows(rows, 10);
+    assertEqual(out[0].nickname, "Alpha", "first in the ordered stream wins");
+    assertEqual(out[1].nickname, "Beta", "second in the ordered stream follows");
+  });
+
+  test("rankRows keeps the first ten names and drops every unranked name", function () {
+    var rows = [];
+    for (var i = 0; i < 12; i++) rows.push(lbRow("P" + i, 100 - i));
+    rows.push(lbRow("Ghost", 1));
+    var out = LB.rankRows(rows, 10);
+    var names = {};
+    out.forEach(function (r) { names[r.nickname] = true; });
+    assertEqual(Object.keys(names).length, 10, "ten distinct names");
+    assertEqual(names.Ghost, undefined, "a name below the cut contributes nothing");
+    assertEqual(names.P11, undefined, "the eleventh name is out");
+  });
+
+  test("rankRows returns only what exists when fewer than ten names qualify", function () {
+    var out = LB.rankRows([lbRow("Bat", 9), lbRow("Cat", 8)], 10);
+    assertEqual(out.length, 2, "no filler rows");
+  });
+
+  test("rankRows drops blank, whitespace and missing nicknames", function () {
+    var out = LB.rankRows([lbRow("", 9), lbRow("   ", 8), lbRow("Bat", 7), lbRow(null, 6)], 10);
+    assertEqual(out.length, 1, "only the real name survives");
+    assertEqual(out[0].nickname, "Bat", "survivor");
+  });
+
+  test("rankRows returns an empty array for anything that is not an array", function () {
+    assertEqual(LB.rankRows([], 10).length, 0, "empty array");
+    assertEqual(LB.rankRows(null, 10).length, 0, "null");
+    assertEqual(LB.rankRows(undefined, 10).length, 0, "undefined");
+    assertEqual(LB.rankRows({}, 10).length, 0, "object");
+  });
+
+  test("rankRows emits four rows for a top name that repeats three times", function () {
+    var rows = [lbRow("Bat", 100)];
+    for (var i = 0; i < 9; i++) rows.push(lbRow("P" + i, 90 - i));
+    rows.push(lbRow("Bat", 5));
+    rows.push(lbRow("Bat", 4));
+    rows.push(lbRow("Bat", 3));
+    var out = LB.rankRows(rows, 10);
+    var distinct = {};
+    out.forEach(function (r) { distinct[r.nickname] = true; });
+    assertEqual(Object.keys(distinct).length, 10, "still only ten names");
+    assertEqual(out.length, 13, "ten names plus three repeats");
+    assertEqual(out[1].repeat, true, "first repeat follows Bat's own best row");
+    assertEqual(out[2].repeat, true, "second repeat follows its own best row");
+    assertEqual(out[3].nickname, "Bat", "the last repeat still sits with its name");
+    assertEqual(out[3].repeat, true, "third repeat");
+  });
+
+  test("rankRows never mutates the rows it is given", function () {
+    var rows = [lbRow("Bat", 90)];
+    LB.rankRows(rows, 10);
+    assertEqual(rows[0].repeat, undefined, "the source row must not be tagged");
+  });
+
+  test("shouldPoll stops a hidden document and allows a visible one", function () {
+    assertEqual(LB.shouldPoll({ hidden: true }), false, "an abandoned tab must not poll");
+    assertEqual(LB.shouldPoll({ hidden: false }), true, "a visible tab polls");
+    assertEqual(LB.shouldPoll(null), true, "no document means no reason to stop");
+  });
+
+  test("REFRESH_MS is ten seconds and TOP_NAMES is ten", function () {
+    assertEqual(LB.REFRESH_MS, 10000, "auto-refresh cadence");
+    assertEqual(LB.TOP_NAMES, 10, "distinct names shown");
   });
 
   return { tests: tests };
