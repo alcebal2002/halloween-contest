@@ -168,6 +168,12 @@ h2 {
 .field-error { color: #fca5a5; font-size: 14px; margin-top: 8px; }
 .field-note { color: var(--muted); font-size: 14px; margin-top: 8px; font-style: italic; }
 
+.save-status { color: var(--muted); font-size: 14px; text-align: center; margin: 16px 0 8px; }
+.save-status.is-saved { color: #86efac; }
+.save-status.is-duplicate { color: var(--orange); }
+.save-status.is-error { color: #fca5a5; }
+#btn-results-retry { margin-bottom: 10px; }
+
 .options { display: flex; flex-direction: column; gap: 12px; }
 
 .btn {

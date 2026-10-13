@@ -11,6 +11,15 @@
   var lastFeedback = null;      // { correct: boolean, correctText: string }
   var bonusSelection = [];      // bottles picked for the attempt in progress (never persisted)
   var bonusFlash = null;        // { order: [..], hits: [bool x3] } while a check is being shown
+  var cloudSave = "idle";       // idle | saving | saved | already | duplicate | failed
+  var SAVE_MARKER_KEY = "halloweenContest.saved.v1";
+  var SAVE_TEXT = {
+    saving: "Saving your results…",
+    saved: "Results saved.",
+    already: "Results already saved.",
+    duplicate: "This session's results are already stored.",
+    failed: "Couldn't save your results."
+  };
   var flashTimer = null;        // clears bonusFlash after BONUS_BLINK_MS
   var note = "";                // "question set changed" note
   var el = {};
@@ -114,6 +123,8 @@
       rTime: $("results-time"),
       rFinished: $("results-finished"),
       rReview: $("results-review"),
+      saveStatus: $("results-save"),
+      saveRetry: $("btn-results-retry"),
       playAgain: $("btn-play-again"),
       errorMessage: $("error-message")
     };
@@ -196,6 +207,7 @@
       if (btn) onBottle(parseInt(btn.getAttribute("data-bottle"), 10));
     });
     el.playAgain.addEventListener("click", onStartOver);
+    el.saveRetry.addEventListener("click", onSaveRetry);
   }
 
   function onStart() {
@@ -212,6 +224,7 @@
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
     bonusSelection = [];
+    cloudSave = "idle";
     clearBonusFlash();
     persist();
     view = "instructions";
@@ -247,6 +260,7 @@
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
     bonusSelection = [];
+    cloudSave = "idle";
     clearBonusFlash();
     persist();
     view = "question";
@@ -384,6 +398,51 @@
     el.mastheadTitle.textContent = onBonus ? "Poison Bonus" : "Halloween Contest";
   }
 
+  function storedSessionId() {
+    try { return (storage && storage.getItem(SAVE_MARKER_KEY)) || null; } catch (e) { return null; }
+  }
+
+  function markStored(sessionId) {
+    try { if (storage) storage.setItem(SAVE_MARKER_KEY, sessionId); } catch (e) { /* ignore */ }
+  }
+
+  function renderSaveStatus() {
+    var text = SAVE_TEXT[cloudSave];
+    el.saveStatus.hidden = !text;
+    el.saveStatus.textContent = text || "";
+    el.saveStatus.className = "save-status" +
+      ((cloudSave === "saved" || cloudSave === "already") ? " is-saved" : "") +
+      (cloudSave === "duplicate" ? " is-duplicate" : "") +
+      (cloudSave === "failed" ? " is-error" : "");
+    el.saveRetry.hidden = cloudSave !== "failed";
+  }
+
+  // Runs once per session, when the results screen first renders. The marker
+  // makes a reload of a finished run stay quiet instead of reporting its own
+  // earlier write as a duplicate.
+  function maybeSaveResults() {
+    if (cloudSave !== "idle") return;
+    var config = (typeof window !== "undefined" && window.SUPABASE_CONFIG) || null;
+    if (!ResultsApi.isConfigured(config)) { renderSaveStatus(); return; }
+    if (storedSessionId() === state.sessionId) { cloudSave = "already"; renderSaveStatus(); return; }
+    var row = ResultsApi.buildResultRow(state);
+    if (!row) { renderSaveStatus(); return; }
+    cloudSave = "saving";
+    renderSaveStatus();
+    ResultsApi.saveResult(config, row).then(function (res) {
+      if (res.ok) { cloudSave = "saved"; markStored(state.sessionId); }
+      else if (res.kind === "duplicate") { cloudSave = "duplicate"; }
+      else { cloudSave = "failed"; }
+      renderSaveStatus();
+    });
+  }
+
+  function onSaveRetry() {
+    if (cloudSave !== "failed") return;
+    cloudSave = "idle";
+    maybeSaveResults();
+  }
+
   function render() {
     updateHud();
     updateMasthead();
@@ -471,6 +530,7 @@
           (a.correct ? "" : '<p class="a">Correct: <b>' + esc(correctText) + "</b></p>") +
           "</li>";
       }).join("");
+      maybeSaveResults();
       $("screen-results").hidden = false;
       return;
     }
