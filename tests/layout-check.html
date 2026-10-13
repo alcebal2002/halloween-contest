@@ -100,6 +100,10 @@
       click(D().querySelectorAll("#question-options .option")[q.correctIndex]);
       await wait(50);
       checkScreen("feedback", "feedback");
+      var optBox = D().querySelector("#feedback-options").getBoundingClientRect();
+      var nextBox = $("btn-next").getBoundingClientRect();
+      rec("feedback: the Next button keeps a gap below the options",
+        nextBox.top - optBox.bottom >= 16, "gap=" + Math.round(nextBox.top - optBox.bottom) + "px");
 
       click($("btn-next"));
       await wait(50);
@@ -109,6 +113,11 @@
       click(bottles[target[1]]);
       await wait(50);
       checkScreen("bonus (two bottles picked)", "bonus");
+      var slotsBox = $("bonus-slots").getBoundingClientRect();
+      var actionsBox = D().querySelector("#screen-bonus .actions").getBoundingClientRect();
+      rec("bonus: the action buttons keep a gap below the order slots",
+        actionsBox.top - slotsBox.bottom >= 16,
+        "gap=" + Math.round(actionsBox.top - slotsBox.bottom) + "px");
       rec("bonus: four order slots are shown",
         D().querySelectorAll("#bonus-slots .slot").length === 4,
         D().querySelectorAll("#bonus-slots .slot").length);

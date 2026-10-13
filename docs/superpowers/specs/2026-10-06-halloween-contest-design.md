@@ -328,6 +328,7 @@ outcomes (the neon match highlight, the big centred "+10 / +5 / +3" award flash,
 on a partial match and the empty slots it
 leaves — including after a reload — and the settled miss), resume from every phase, and the
 results screen.
-`tests/layout-check.html` (37
-checks) repeats the 360px overflow assertion at every step of the flow.
+`tests/layout-check.html` (39
+checks) repeats the 360px overflow assertion at every step of the flow and asserts a clear
+gap above the action buttons on the feedback and bonus screens.
 `tests/make-nostorage.js` regenerates the `localStorage`-blocked copy of `index.html`.

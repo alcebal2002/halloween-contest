@@ -191,7 +191,10 @@ h2 {
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255, 122, 26, 0.35); }
 .btn-ghost { background: transparent; color: var(--muted); border-color: rgba(168, 159, 145, 0.4); }
 .btn-ghost:hover { color: var(--bone); border-color: var(--bone); }
-.actions { display: flex; flex-direction: column; gap: 10px; }
+/* Buttons always sit on their own line, with a clear gap above so they never
+   crowd the last option or the order slots. */
+.actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+#btn-next { margin-top: 24px; }
 
 .option {
   text-align: left;
