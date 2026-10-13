@@ -168,12 +168,108 @@
     // one, and a single dropped request never blanks a good leaderboard.
   }
 
+  var activeLoad = null;
+  var timerId = null;
+
+  // Runs one load and renders its outcome. Always resolves — fetchResults
+  // already resolves, and render is wrapped here so a DOM surprise becomes a
+  // failed load rather than a tick that stops polling for good.
+  function loadWith(doc, api, config) {
+    return api.fetchResults(config).then(function (res) {
+      if (!res.ok) {
+        // The previously rendered rows are left untouched; only the status
+        // line changes. A leaderboard failure is transient, so polling keeps
+        // running and Refresh still works.
+        render(doc, { state: "error", status: "Couldn't load — retrying",
+                      message: "Couldn't load the leaderboard — retrying." });
+        return res;
+      }
+      var ranked = rankRows(res.rows, TOP_NAMES);
+      render(doc, {
+        state: ranked.length ? "ready" : "empty",
+        rows: ranked,
+        status: "Updated " + new Date().toLocaleTimeString(),
+        message: "No results yet — finish a contest and your score appears here.",
+        link: ranked.length ? null : { href: "index.html", text: "Play now" }
+      });
+      return res;
+    }, function (e) {
+      return { ok: false, kind: "failed", detail: (e && e.message) || "render error" };
+    });
+  }
+
+  // The single entry point every trigger goes through: the Refresh button,
+  // visibilitychange returning to visible, and each interval tick.
+  function reload() {
+    if (!activeLoad) return Promise.resolve(null);
+    return activeLoad();
+  }
+
+  function startPolling(load, ms) {
+    stopPolling();
+    var every = (typeof ms === "number" && ms > 0) ? ms : REFRESH_MS;
+    timerId = setInterval(function () {
+      if (!shouldPoll(rootRef && rootRef.document)) return;
+      load();
+    }, every);
+    return timerId;
+  }
+
+  function stopPolling() {
+    if (timerId !== null && timerId !== undefined) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  }
+
+  function boot(doc, api, config) {
+    if (!doc || !api) return null;
+    render(doc, { state: "loading", status: "Loading…" });
+
+    // Unconfigured cannot change without a reload, so polling would only fire
+    // a request that fails by definition every ten seconds.
+    if (!api.isConfigured(config)) {
+      render(doc, { state: "not-configured", status: "Not configured",
+                    message: "The leaderboard is not configured yet." });
+      return null;
+    }
+
+    var inFlight = false;
+    activeLoad = function () {
+      if (inFlight) return Promise.resolve(null);
+      inFlight = true;
+      return loadWith(doc, api, config).then(function (res) {
+        inFlight = false;
+        return res;
+      });
+    };
+
+    var refresh = doc.getElementById("btn-lb-refresh");
+    if (refresh && refresh.addEventListener) {
+      refresh.addEventListener("click", function () { reload(); });
+    }
+    if (doc.addEventListener) {
+      doc.addEventListener("visibilitychange", function () {
+        if (doc.hidden) return;
+        reload();
+      });
+    }
+
+    reload();
+    startPolling(reload, REFRESH_MS);
+    return null;
+  }
+
   return {
     REFRESH_MS: REFRESH_MS,
     TOP_NAMES: TOP_NAMES,
     COLUMNS: COLUMNS,
     rankRows: rankRows,
     shouldPoll: shouldPoll,
-    render: render
+    render: render,
+    reload: reload,
+    startPolling: startPolling,
+    stopPolling: stopPolling,
+    boot: boot
   };
 });
