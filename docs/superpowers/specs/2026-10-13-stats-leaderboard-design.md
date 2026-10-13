@@ -215,7 +215,6 @@ per state; in the Empty state it additionally contains the **Play now** anchor.
 ## 9. UI
 
 ```html
-<a class="lb-back" href="index.html">Back to the game</a>
 <h1 class="title">Halloween Contest Leaderboard</h1>
 <p id="lb-status" class="save-status" aria-live="polite">Loading…</p>
 <button id="btn-lb-refresh" class="btn btn-ghost" type="button">Refresh</button>
@@ -239,8 +238,8 @@ the **top 500 scores** — not the latest 500, and not everything. Without the l
 reasonably assumes they are seeing all results, and that assumption becomes wrong the moment the
 table passes 500 rows.
 
-`css/style.css` gains `.lb-table`, `.lb-row`, `.is-repeat`, `.lb-rank`, `.lb-foot`, `.lb-back`
-and the `max-width: 559px` reflow (the complement of the existing `min-width: 560px` rule),
+`css/style.css` gains `.lb-table`, `.lb-row`, `.is-repeat`, `.lb-rank` and `.lb-foot`
+plus the `max-width: 559px` reflow (the complement of the existing `min-width: 560px` rule),
 reusing the existing `--muted`, `--panel` and `.save-status` idioms rather than inventing a
 palette. `.save-status` carries `.is-error` while a load is failing and no modifier otherwise.
 
@@ -310,11 +309,11 @@ Every runner is verified green on a fresh profile with a cache-buster before com
   root with no workflow, so committing `stats.html` makes
   `https://alcebal2002.github.io/halloween-contest/stats.html` live on the next push. The anon key
   is already public by design; no new secret is exposed by publishing this page.
-- **Nothing in the game links to this page.** §3 puts "modifying the game screens" out of scope,
-  so `stats.html` is reachable only by URL — `https://alcebal2002.github.io/halloween-contest/stats.html`
-  or a local serve. The page links *to* the game (Back to the game, Play now) but not back. Adding
-  one anchor to `index.html` would be a single line; it is deliberately left out rather than
-  smuggled into a spec that declared it out of scope.
+- **Nothing links in or out.** §3 puts "modifying the game screens" out of scope, so nothing in the
+  game links to this page and the page links back to nothing: `stats.html` is reachable only by URL —
+  `https://alcebal2002.github.io/halloween-contest/stats.html` or a local serve. Adding one anchor to
+  `index.html` would be a single line; it is deliberately left out rather than smuggled into a spec
+  that declared it out of scope.
 - **A stale tab shows stale data.** Polling pauses while `document.hidden` by design; the status
   line's timestamp is what tells a reader how old the numbers are.
 

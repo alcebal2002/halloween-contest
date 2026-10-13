@@ -435,15 +435,6 @@ h2 {
 }
 
 /* ---- Leaderboard (stats.html) ---- */
-.lb-back {
-  display: inline-block;
-  color: var(--muted);
-  font-size: 14px;
-  text-decoration: none;
-  margin-bottom: 6px;
-}
-.lb-back:hover, .lb-back:focus-visible { color: var(--bone); }
-
 .lb-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
 .lb-table th {
   text-align: left;
