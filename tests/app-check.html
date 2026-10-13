@@ -313,14 +313,15 @@
       click($("btn-bonus-check"));
       var st = app().getState();
       var verdict = $("bonus-verdict").textContent;
-      rec("2d. matching the order on the first attempt pays an 11-point question",
+      var srOnly = $("bonus-verdict").classList.contains("sr-only");
+      rec("2d. matching the order on the first attempt pays an 11-point question and announces the award to screen readers",
         st.bonus.resolved === true && st.bonus.matched === true && st.bonus.attemptsUsed === 1 &&
           st.bonus.award === 10 && st.answers[0].points === 11 && st.score === 11 &&
-          verdict.indexOf("Match on attempt 1") === 0 && verdict.indexOf("+10") > -1 &&
+          verdict.indexOf("Match on attempt 1") === 0 && verdict.indexOf("+10") > -1 && srOnly &&
           $("btn-bonus-next").hidden === false && hud() === "Total Points: 11 - Question 1/10",
         "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed +
           " award=" + st.bonus.award + " points=" + st.answers[0].points + " score=" + st.score +
-          " verdict='" + verdict + "' hud='" + hud() + "'");
+          " srOnly=" + srOnly + " verdict='" + verdict + "' hud='" + hud() + "'");
     });
 
     step("2d1. the bonus award flashes +10 in the middle of the screen", function () {
@@ -477,7 +478,7 @@
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
-    step("f3. a miss with nothing right clears at once, and the third settles at 1 point", function () {
+    step("f3. a miss with nothing right clears at once, and the third settles at 1 point with no order text", function () {
       pick(missOrder());
       var st = app().getState();
       var stillOpen = st.bonus.resolved === false;
@@ -486,11 +487,11 @@
         $("bonus-slots").querySelectorAll(".slot.is-correct-pos").length === 0;
       if (stillOpen) pick(missOrder());
       var done = app().getState();
-      rec("f3. a miss with nothing right clears at once, and the third settles at 1 point",
+      rec("f3. a miss with nothing right clears at once, and the third settles at 1 point with no order text",
         stillOpen && clearedAtOnce && verdictBefore === "No match - try again." && done.bonus.resolved === true &&
           done.bonus.matched === false && done.bonus.attemptsUsed === 3 &&
           done.answers[1].points === 1 && done.score === 12 &&
-          $("bonus-verdict").textContent.indexOf("You still keep 1 point") > -1,
+          $("bonus-verdict").textContent === "You still keep 1 point.",
         "stillOpen=" + stillOpen + " clearedAtOnce=" + clearedAtOnce + " verdictBefore='" + verdictBefore + "' attempts=" + done.bonus.attemptsUsed +
           " points=" + done.answers[1].points + " score=" + done.score +
           " verdict='" + $("bonus-verdict").textContent + "'");

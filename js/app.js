@@ -598,11 +598,14 @@
     el.bonusSlots.innerHTML = slotMarkup(indices, size, bonus.resolved && bonus.matched, rings);
 
     if (bonus.resolved) {
-      el.bonusVerdict.className = "verdict " + (bonus.matched ? "is-correct" : "is-warn");
+      // A settled round already speaks for itself on screen: a match rings all
+      // four slots and flashes the award, and a miss leaves the target order in
+      // the slots. So the match line is kept for screen readers only, and a
+      // settled miss no longer repeats the order in text.
+      el.bonusVerdict.className = bonus.matched ? "sr-only" : "verdict is-warn";
       el.bonusVerdict.textContent = bonus.matched
         ? "Match on attempt " + bonus.attemptsUsed + "! +" + bonus.award + " bonus points."
-        : "No match - the order was " + bonus.target.map(function (i) { return BOTTLE_NAMES[i]; }).join(" > ") +
-          ". You still keep 1 point.";
+        : "You still keep 1 point.";
       el.bonusCheck.hidden = true;
       el.bonusReset.hidden = true;
       el.bonusNext.hidden = false;

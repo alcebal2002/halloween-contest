@@ -258,19 +258,21 @@ player's order shows the same vial in each slot, and an unfilled slot is a dim, 
 The player clicks bottles to build an order left to right, **Check order** compares it with the
 hidden permutation, **Clear** resets the picks. A miss leaves the round open with one attempt
 consumed; the round settles on a match or on the third miss, then the summary replaces the
-controls and **Next** continues. The hidden order is shown once the round settles.
+controls and **Next** continues. Once the round settles the four slots hold the hidden order.
 
 On a match, each of the four filled slots is ringed in neon green (`--neon`, `#39ff14`) with a
 soft glow that pulses (the pulse is disabled under `prefers-reduced-motion`), so the player can
 see that every position matched. Only the **border** (and its glow) changes — the bottle inside
 keeps its own colour and fill. The highlight is derived from `bonus.matched` at render time,
 not stored: leaving the round clears it, so the next bonus opens with empty slots, no glow and
-the bottles selectable again. A settled miss never lights the slots.
+the bottles selectable again. A settled miss never lights the slots; it shows only
+"You still keep 1 point." beneath them — the order is not repeated in text because the slots
+already hold it.
 
 A match also flashes its award in the middle of the screen: a large `+10` / `+5` / `+3` (the
 `+` and `bonus.award`) that fades in and out over two seconds. `#bonus-flash` is fixed and
-viewport-centred and purely decorative (`aria-hidden`); the bonus summary line beneath the
-slots carries the same award for screen readers. Under `prefers-reduced-motion` the award still
+viewport-centred and purely decorative (`aria-hidden`); the bonus verdict line beneath the
+slots is screen-reader-only and carries the same award. Under `prefers-reduced-motion` the award still
 appears but without the pop. It is cleared by the same transition that clears the partial-miss
 blink of the next paragraph.
 
