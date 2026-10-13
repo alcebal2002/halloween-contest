@@ -288,6 +288,10 @@ mid-round reload starts from empty slots with the attempts already spent. With f
 bottles the number of positions that can match is 0, 1, 2 or 4 (never 3), so a partial result
 flashes one or two slots.
 
+While the round is open the verdict line is screen-reader-only: before the first check it is
+empty, and on a failed check it announces "No match - try again.". On screen the emptied slots
+and the locked tray carry the miss, so nothing is shown between attempts.
+
 ### 10.4 Score bar
 
 `#hud` sits at the top of the card from the instructions screen through to the results, and is

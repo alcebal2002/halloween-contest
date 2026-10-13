@@ -409,7 +409,7 @@
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 
-    step("f2. a partial match blinks the right position green and freezes the round", function () {
+    step("f2. a partial match blinks the right position green and freezes the round, miss only spoken", function () {
       var t = app().getState().bonus.target;
       var order = [t[0], t[2], t[3], t[1]];   // position 1 is right, the rest are not
       pick(order);
@@ -432,10 +432,11 @@
         W().getComputedStyle(ring.querySelector(".slot-glyph")).color !== "rgb(57, 255, 20)" &&
         cs.backgroundColor !== "rgba(57, 255, 20, 0.14)";
       var locked = Array.prototype.every.call(bottles(), function (b) { return b.disabled; });
-      rec("f2. a partial match blinks the right position green and freezes the round",
+      var verdictHidden = $("bonus-verdict").classList.contains("sr-only");
+      rec("f2. a partial match blinks the right position green and freezes the round, miss only spoken",
         st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && st.score === 12 &&
           st.bonus.tried.join(",") === order.join(",") &&
-          $("bonus-verdict").textContent === "No match - try again." &&
+          $("bonus-verdict").textContent === "No match - try again." && verdictHidden &&
           $("bonus-attempts").textContent.indexOf("2") > -1 &&
           filled === 4 && rings === 1 && matched === 0 && ring === slots[0] && glowing && wrongBare &&
           contentBare && locked &&
@@ -443,6 +444,7 @@
         "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed + " score=" + st.score +
           " filled=" + filled + " rings=" + rings + " matched=" + matched + " ringIsFirst=" + (ring === slots[0]) +
           " glowing=" + glowing + " wrongBare=" + wrongBare + " contentBare=" + contentBare + " locked=" + locked +
+          " verdictHidden=" + verdictHidden +
           " checkDisabled=" + $("btn-bonus-check").disabled);
     });
 

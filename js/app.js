@@ -610,7 +610,11 @@
       el.bonusReset.hidden = true;
       el.bonusNext.hidden = false;
     } else {
-      el.bonusVerdict.className = "verdict" + (bonus.attemptsUsed > 0 ? " is-wrong" : "");
+      // The emptied slots and the locked tray already show a miss on screen, so
+      // the verdict is hidden: it stays only as the spoken announcement that a
+      // check failed (without it, Check order would give no feedback to a
+      // screen-reader player).
+      el.bonusVerdict.className = "sr-only";
       el.bonusVerdict.textContent = bonus.attemptsUsed > 0 ? "No match - try again." : "";
       el.bonusCheck.hidden = false;
       el.bonusReset.hidden = false;
