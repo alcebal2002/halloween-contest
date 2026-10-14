@@ -52,7 +52,8 @@ profile has to be fresh.
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
   four-bottle poison tray (a glossy neon vial, drawn once and reused, with the
   colour named under each bottle and a dim empty vial in every unfilled order slot), immediate
-  feedback (with the "+1" a correct answer flashes, and no flash on a wrong one), the bonus round
+  feedback (with the "+1" a correct answer flashes, no flash on a wrong one, and the
+  button reading "Poison Bonus!" after a correct answer but "Next" after a wrong one), the bonus round
   (open → pick four bottles → first-attempt match pays an 11-point
   question, with a big centred "+10" that fades in for a couple of seconds → Next,
   and three misses settling at 1), the neon match highlight and its reset in the following

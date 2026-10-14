@@ -538,6 +538,9 @@
       el.fProgress.textContent = "Question " + (state.questionIndex + 1) + " of " + questions.length;
       el.fText.textContent = fq.text;
       el.fOptions.innerHTML = optionMarkup(fq, fq.correctIndex, "feedback", last ? last.selected : -1);
+      // A correct answer leads into the poison bonus, a wrong one on to the next
+      // question (or the results), so the button says which comes next.
+      el.next.textContent = lastFeedback && lastFeedback.correct ? "Poison Bonus!" : "Next";
       // Announce the outcome to screen readers only: on screen the correct option
       // is already green and the wrong pick red, so no visible sentence is needed.
       el.fVerdict.className = "sr-only";

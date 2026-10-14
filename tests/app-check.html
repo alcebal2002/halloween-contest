@@ -179,13 +179,15 @@
       var allDisabled = Array.prototype.every.call(fBtns, function (b) { return b.disabled; });
       var marked = fBtns[q.correctIndex].className.indexOf("is-correct") > -1;
       var srHidden = $("feedback-verdict").classList.contains("sr-only");
+      var nextLabel = $("btn-next").textContent;
       var st = app().getState();
       rec("immediate feedback: 'Correct!' only for screen readers, correct option marked, options locked, score 1",
         app().getView() === "feedback" && $("feedback-verdict").textContent === "Correct!" &&
-          srHidden && allDisabled && marked && st.score === 1 && hud() === "Total Points: 1 - Question 1/10",
+          srHidden && allDisabled && marked && st.score === 1 && hud() === "Total Points: 1 - Question 1/10" &&
+          nextLabel === "Poison Bonus!",
         "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent +
           " srOnly=" + srHidden + " disabled=" + allDisabled + " marked=" + marked +
-          " score=" + st.score + " hud='" + hud() + "'");
+          " score=" + st.score + " hud='" + hud() + "' nextLabel='" + nextLabel + "'");
     });
 
     /* The correct answer's 1-point base flashes in the middle of the screen, the
@@ -218,8 +220,10 @@
       click($("btn-continue"));
       var st = app().getState();
       rec("1b. Continue restores the verdict and Next button, score unchanged",
-        app().getView() === "feedback" && $("feedback-verdict").textContent.length > 0 && st.score === 1,
-        "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent + " score=" + st.score);
+        app().getView() === "feedback" && $("feedback-verdict").textContent.length > 0 && st.score === 1 &&
+          $("btn-next").textContent === "Poison Bonus!",
+        "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent + " score=" + st.score +
+          " nextLabel='" + $("btn-next").textContent + "'");
     });
 
     /* ---- bonus round: first attempt pays 5 ---- */
@@ -617,11 +621,15 @@
       rec("start a fresh run as 'Unlucky'", app().getView() === "question", "view=" + app().getView());
     });
 
-    step("a wrong answer gives no points, so nothing flashes", function () {
-      answerWrong();
-      rec("a wrong answer gives no points, so no points flash",
-        app().getView() === "question" && $("points-flash").hidden === true,
-        "view=" + app().getView() + " flashHidden=" + $("points-flash").hidden);
+    step("a wrong answer gives no points and leaves the button reading Next", function () {
+      var wst = app().getState();
+      var wq = app().getQuestions()[wst.questionIndex];
+      click(options()[(wq.correctIndex + 1) % 3]);
+      var wrongLabel = $("btn-next").textContent;
+      rec("a wrong answer gives no points, so no points flash, and the button still reads Next",
+        app().getView() === "feedback" && $("points-flash").hidden === true && wrongLabel === "Next",
+        "view=" + app().getView() + " flashHidden=" + $("points-flash").hidden + " label='" + wrongLabel + "'");
+      click($("btn-next"));
     });
 
     for (var i = 0; i < 9; i++) {
