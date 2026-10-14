@@ -495,15 +495,16 @@ h2 {
   overflow-wrap: anywhere;
 }
 .lb-table td.lb-rank { color: var(--orange); font-weight: 700; width: 2.5em; }
-/* Five columns now that Score folds in Correct and Bonus. Score and Time each
-   take ~10% more than their natural width and the Player column gives up
-   exactly that much; the name still stays on one line. The other cells keep
-   `overflow-wrap: anywhere`, so a long timestamp folds rather than pushing the
-   table sideways. Percentages are of the table, which is capped at 640px on
-   desktop, so they reproduce the intended pixel widths there. */
-.lb-table th:nth-child(2) { width: 39.7%; }
-.lb-table th:nth-child(3) { width: 13.6%; }
-.lb-table th:nth-child(4) { width: 11.3%; }
+/* Five columns now that Score folds in Correct and Bonus. Score and Time are
+   each widened ~10% (twice over) past their natural width and the Player
+   column gives up exactly that much; the name still stays on one line. The
+   other cells keep `overflow-wrap: anywhere`, so a long timestamp folds rather
+   than pushing the table sideways. Percentages are of the table, which is
+   capped at 640px on desktop, so they reproduce the intended pixel widths
+   there. */
+.lb-table th:nth-child(2) { width: 37.2%; }
+.lb-table th:nth-child(3) { width: 14.9%; }
+.lb-table th:nth-child(4) { width: 12.5%; }
 .lb-table td.lb-player { white-space: nowrap; }
 .lb-table tr.is-repeat td { color: var(--muted); opacity: 0.62; }
 .lb-table tr.is-skeleton td {
