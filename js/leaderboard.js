@@ -77,13 +77,13 @@
 
   function num(v) { return Number(v) || 0; }
 
-  // The Score column folds the old Correct and Bonus counts into a single
-  // "total (correct:bonus)" reading, e.g. "25 (7:4)". The counts stay visible
-  // so the column still explains the total, while the table gains width for the
-  // player name.
+  // The Score column folds the old Correct count into the cell as a single
+  // "total (correct)" reading, e.g. "25 (7)". The total is the headline; the
+  // count in parentheses explains it. (Bonus points are already part of the
+  // total, so they are not repeated here.) Folding the count in frees a column
+  // and hands the width to the player name.
   function scoreText(row) {
-    return num(row.total_score) + " (" + num(row.correct_count) + ":" +
-      num(row.bonuses_matched) + ")";
+    return num(row.total_score) + " (" + num(row.correct_count) + ")";
   }
 
   function displayName(row) {

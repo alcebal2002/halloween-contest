@@ -183,14 +183,15 @@
     });
     rec("7. every cell carries a non-empty data-label", allLabelled, "allLabelled=" + allLabelled);
 
-    // Fixture row 0 is Bat: score 100, correct 8 - (0 % 4) = 8, bonus 0 % 3 = 0,
-    // elapsed 60000ms. Score folds the two counts in as "total (correct:bonus)".
-    // The timestamp is compared against GameLogic rather than a literal, because
-    // toLocaleString() depends on the machine's locale — the point of the check
-    // is that the right field lands in the right column.
+    // Fixture row 0 is Bat: score 100, correct 8 - (0 % 4) = 8, elapsed 60000ms.
+    // Score folds the correct count in as "total (correct)" — the bonus is
+    // already part of the total, so it is not repeated. The timestamp is
+    // compared against GameLogic rather than a literal, because toLocaleString()
+    // depends on the machine's locale — the point of the check is that the
+    // right field lands in the right column.
     var first = rows[0];
-    rec("8. score (with correct:bonus), time and finished land in the right columns",
-      cellText(first, 2) === "100 (8:0)" && cellText(first, 3) === "1m 00s" &&
+    rec("8. score (with correct count), time and finished land in the right columns",
+      cellText(first, 2) === "100 (8)" && cellText(first, 3) === "1m 00s" &&
         cellText(first, 4) === win.GameLogic.formatTimestamp("2026-10-13T12:00:00.000Z"),
       "score='" + cellText(first, 2) + "' time='" + cellText(first, 3) +
         "' finished='" + cellText(first, 4) + "'");
@@ -204,7 +205,7 @@
     }] });
     var bad = d.querySelectorAll("#lb-body tr")[0];
     rec("9. malformed numbers and a bad timestamp coerce instead of throwing",
-      bad.cells[2].textContent === "0 (0:0)" && bad.cells[3].textContent === "0s" &&
+      bad.cells[2].textContent === "0 (0)" && bad.cells[3].textContent === "0s" &&
         bad.cells[4].textContent === "",
       "score='" + bad.cells[2].textContent + "' time='" + bad.cells[3].textContent +
         "' finished='" + bad.cells[4].textContent + "'");
