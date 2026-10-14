@@ -138,8 +138,8 @@
     await load(f);
     var d = D(f), win = W(f);
 
-    rec("1. title is Halloween Contest Leaderboard",
-      d.title === "Halloween Contest Leaderboard", "title=" + d.title);
+    rec("1. title is GFT Halloween Contest Leaderboard",
+      d.title === "GFT Halloween Contest Leaderboard", "title=" + d.title);
 
     var bg = win.getComputedStyle(d.body).backgroundColor;
     rec("2. the page loads its stylesheet through the injected base",
@@ -278,7 +278,7 @@
       "rows=" + rowCount() + " status='" + statusText() + "'");
 
     W(f).__lbStub.mode = "network";
-    click($(f, "btn-lb-refresh"), win2);
+    win2.Leaderboard.reload();
     await wait(300);
     rec("16. a failed refresh keeps the rows and says so",
       rowCount() === 11 && statusText().indexOf("Couldn't load") === 0 &&
@@ -286,9 +286,9 @@
       "rows=" + rowCount() + " status='" + statusText() + "'");
 
     W(f).__lbStub.mode = "rows";
-    click($(f, "btn-lb-refresh"), win2);
+    win2.Leaderboard.reload();
     await wait(300);
-    rec("17. Refresh recovers to a fresh Updated stamp",
+    rec("17. a manual reload recovers to a fresh Updated stamp",
       rowCount() === 11 && statusText().indexOf("Updated ") === 0,
       "rows=" + rowCount() + " status='" + statusText() + "'");
 

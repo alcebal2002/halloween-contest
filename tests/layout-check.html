@@ -77,7 +77,7 @@
 
       checkScreen("nickname", "nickname");
       rec("viewport is 360px wide", d.documentElement.clientWidth === 360, d.documentElement.clientWidth);
-      rec("page title is correct", d.title === "Halloween Contest", d.title);
+      rec("page title is correct", d.title === "GFT Halloween Contest", d.title);
       rec("score bar is hidden before the contest starts", $("hud").hidden, $("hud").hidden);
 
       $("nickname").value = "Bat";

@@ -251,7 +251,7 @@
         return !!use && (use.getAttribute("href") || use.getAttribute("xlink:href")) === "#vial";
       });
       rec("2a. the tray shows four neon poison bottles in distinct colours",
-        arts.length === 4 && labels.join(",") === "Toxic green,Deep purple,Blood red,Cyanide cyan" &&
+        arts.length === 4 && labels.join(",") === "Toxic yellow,Deep purple,Blood red,Cyanide cyan" &&
           Object.keys(distinct).length === 4 && vials,
         "labels=" + labels.join("/") + " colors=" + colors.join(" | "));
     });
@@ -314,11 +314,11 @@
 
     step("2c3. a filled slot lights its bottle in that bottle's neon colour", function () {
       var glyph = $("bonus-slots").querySelector(".slot.is-filled.slot-0 .slot-glyph");
-      var green = "rgb(34, 197, 94)";
+      var yellow = "rgb(250, 204, 21)";
       var color = glyph ? W().getComputedStyle(glyph).color : "";
-      // slot-0 is the toxic-green bottle, so its slot bottle carries that colour.
+      // slot-0 is the toxic-yellow bottle, so its slot bottle carries that colour.
       rec("2c3. a filled slot lights its bottle in that bottle's neon colour",
-        !!glyph && !!glyph.querySelector("svg.vial > use") && color === green,
+        !!glyph && !!glyph.querySelector("svg.vial > use") && color === yellow,
         "color=" + color);
     });
 

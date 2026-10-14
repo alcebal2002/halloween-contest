@@ -99,7 +99,7 @@ html = html
   })
   .join("\n")
   .replace("<!DOCTYPE html>", "<!DOCTYPE html>\n<!--\n  GENERATED TEST ARTIFACT — not shipped.\n  A copy of index.html (paths made server-absolute) with localStorage blocked\n  before the game scripts load, plus a driver that plays a full contest.\n  Regenerate: node tests/make-nostorage.js\n-->")
-  .replace("<title>Halloween Contest</title>", "<title>Halloween Contest — storage-blocked test</title>")
+  .replace("<title>GFT Halloween Contest</title>", "<title>GFT Halloween Contest — storage-blocked test</title>")
   .replace(/href="css\//g, 'href="/css/')
   .replace(/src="js\//g, 'src="/js/')
   // The key ships in its own file, so the copy cannot rewrite it. Blank it
