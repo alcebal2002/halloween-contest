@@ -4,10 +4,11 @@
   var GL = isNode ? require("../js/game-logic.js") : root.GameLogic;
   var RA = isNode ? require("../js/results-api.js") : root.ResultsApi;
   var LB = isNode ? require("../js/leaderboard.js") : root.Leaderboard;
-  var api = factory(GL, RA, LB, root);
+  var BANK = isNode ? require("../js/questions.js") : root.QUESTIONS;
+  var api = factory(GL, RA, LB, BANK, root);
   if (isNode) module.exports = api;
   else root.TestSuite = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, rootRef) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, BANK, rootRef) {
   "use strict";
 
   var tests = [];
@@ -132,6 +133,22 @@
   test("selectQuestions returns an empty array for an empty pool", function () {
     assertEqual(GL.selectQuestions([]).length, 0);
     assertEqual(GL.selectQuestions(null).length, 0);
+  });
+
+  // The shipped bank is data, not code, so it is easy to break with a typo and
+  // no other test would notice: a malformed entry is silently filtered out at
+  // runtime. This validates every entry and proves the real bank still fills a
+  // full contest.
+  test("the shipped question bank is valid, uniquely identified, and fills a contest", function () {
+    assert(Array.isArray(BANK) && BANK.length > 0, "question bank is missing or empty");
+    var seen = {};
+    BANK.forEach(function (q) {
+      assert(GL.isValidQuestion(q), "invalid question id=" + (q && q.id));
+      assert(!seen[q.id], "duplicate question id=" + q.id);
+      seen[q.id] = true;
+    });
+    var picked = GL.selectQuestions(BANK, seededRandom(1));
+    assertEqual(picked.length, GL.QUESTIONS_PER_CONTEST, "real bank did not fill a contest");
   });
 
   test("shuffle is deterministic for a seeded rng and preserves members", function () {

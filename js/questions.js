@@ -51,6 +51,40 @@ var QUESTIONS = [
   { id: 47, text: "Which insect is often associated with Halloween decorations?", options: ["Spider", "Butterfly", "Bee"], correctIndex: 0 },
   { id: 48, text: "Which classic horror film was directed by Alfred Hitchcock?", options: ["Psycho", "Dracula", "Frankenstein"], correctIndex: 0 },
   { id: 49, text: "Which Irish legend inspired the headless horseman?", options: ["Dullahan", "Pooka", "Banshee"], correctIndex: 0 },
-  { id: 50, text: "Which 2018 film is a sequel to \"Halloween\" (1978) and ignores other sequels?", options: ["Halloween (2018)", "Halloween H20", "Halloween Resurrection"], correctIndex: 0 }
+  { id: 50, text: "Which 2018 film is a sequel to \"Halloween\" (1978) and ignores other sequels?", options: ["Halloween (2018)", "Halloween H20", "Halloween Resurrection"], correctIndex: 0 },
+
+  /* Halloween food from around the world (51-65). */
+  { id: 51, text: "In Mexico, what is the traditional Day of the Dead bread topped with a knobbly piece like a skull called?", options: ["Tortilla", "Empanada", "Pan de muerto"], correctIndex: 2 },
+  { id: 52, text: "Which Irish Halloween fruit bread is baked with small charms hidden inside?", options: ["Shortbread", "Barmbrack", "Scone"], correctIndex: 1 },
+  { id: 53, text: "Which small spiced cakes were given to \"soulers\" who sang door to door in England at Hallowe'en?", options: ["Mince pies", "Hot cross buns", "Soul cakes"], correctIndex: 2 },
+  { id: 54, text: "Which Irish Halloween supper of mashed potato with curly kale is served with a charm hidden in it?", options: ["Colcannon", "Haggis", "Bubble and squeak"], correctIndex: 0 },
+  { id: 55, text: "Which tricolour candy shaped like a maize kernel is a Halloween staple in the United States?", options: ["Jelly beans", "Candy corn", "Licorice"], correctIndex: 1 },
+  { id: 56, text: "Which spiced gourd pie is a signature autumn dessert in the United States?", options: ["Pumpkin pie", "Pecan pie", "Key lime pie"], correctIndex: 0 },
+  { id: 57, text: "In Britain, what are whole apples on a stick coated in hard caramel called?", options: ["Candy floss", "Marshmallows", "Toffee apples"], correctIndex: 2 },
+  { id: 58, text: "In Italy, which pale almond biscuits are shaped like bones for All Souls' Day?", options: ["Ossa dei morti", "Cannoli", "Amaretti"], correctIndex: 0 },
+  { id: 59, text: "In Spain, which marzipan sweets are rolled into little \"bones\" for All Saints' Day?", options: ["Churros", "Huesos de santo", "Turrón"], correctIndex: 1 },
+  { id: 60, text: "In Catalonia, which small almond-and-pine-nut cakes are eaten on All Saints' Day?", options: ["Crema catalana", "Turrón", "Panellets"], correctIndex: 2 },
+  { id: 61, text: "In Guatemala, what is the traditional Day of the Dead cold meat-and-vegetable salad called?", options: ["Fiambre", "Tamales", "Pupusas"], correctIndex: 0 },
+  { id: 62, text: "In Portugal, which honey-and-spice \"saints' cakes\" are baked for the Pão-por-Deus tradition?", options: ["Pastéis de nata", "Broas dos santos", "Bolo rei"], correctIndex: 1 },
+  { id: 63, text: "In Austria, which jam-filled fried doughnut is a favourite at autumn fairs around All Saints'?", options: ["Strudel", "Pretzel", "Krapfen"], correctIndex: 2 },
+  { id: 64, text: "In Romania, which sweet boiled-wheat dish is served at memorial meals for the dead?", options: ["Coliva", "Cozonac", "Sarma"], correctIndex: 0 },
+  { id: 65, text: "In the Philippines, which sticky-rice cake wrapped in banana leaves is cooked for the Day of the Dead?", options: ["Halo-halo", "Suman", "Lechon"], correctIndex: 1 },
+
+  /* Character names from Halloween-related films and tales (66-80). */
+  { id: 66, text: "In \"Hocus Pocus\", what is the name of the eldest Sanderson sister?", options: ["Sarah", "Winifred", "Mary"], correctIndex: 1 },
+  { id: 67, text: "In \"The Nightmare Before Christmas\", who is the Pumpkin King of Halloween Town?", options: ["Oogie Boogie", "Sandy Claws", "Jack Skellington"], correctIndex: 2 },
+  { id: 68, text: "In \"The Addams Family\", what is the name of the daughter?", options: ["Wednesday", "Ophelia", "Tabitha"], correctIndex: 0 },
+  { id: 69, text: "In \"Hocus Pocus\", what is the name of the boy turned into an immortal black cat?", options: ["Salem", "Thackery Binx", "Ichabod"], correctIndex: 1 },
+  { id: 70, text: "In Bram Stoker's \"Dracula\", who is the vampire-hunting professor?", options: ["Dr. Jekyll", "Victor Frankenstein", "Van Helsing"], correctIndex: 2 },
+  { id: 71, text: "In Mary Shelley's \"Frankenstein\", who is the scientist who creates the creature?", options: ["Victor Frankenstein", "Henry Clerval", "Igor"], correctIndex: 0 },
+  { id: 72, text: "In \"The Legend of Sleepy Hollow\", who is the superstitious schoolteacher?", options: ["Brom Bones", "Ichabod Crane", "Rip Van Winkle"], correctIndex: 1 },
+  { id: 73, text: "In the \"Child's Play\" films, what is the name of the killer doll?", options: ["Annabelle", "Billy", "Chucky"], correctIndex: 2 },
+  { id: 74, text: "In \"A Nightmare on Elm Street\", what is the dream killer's full name?", options: ["Freddy Krueger", "Michael Myers", "Jason Voorhees"], correctIndex: 0 },
+  { id: 75, text: "In the \"Friday the 13th\" films, what is the masked killer's name?", options: ["Leatherface", "Jason Voorhees", "Norman Bates"], correctIndex: 1 },
+  { id: 76, text: "In \"The Omen\", what is the name of the boy believed to be the Antichrist?", options: ["Regan", "Danny", "Damien"], correctIndex: 2 },
+  { id: 77, text: "In \"The Munsters\", what is the name of the Frankenstein-like family father?", options: ["Herman Munster", "Gomez Addams", "Lurch"], correctIndex: 0 },
+  { id: 78, text: "In \"Ghostbusters\", which giant marshmallow mascot is summoned to destroy the city?", options: ["Slimer", "Stay Puft Marshmallow Man", "Michelin Man"], correctIndex: 1 },
+  { id: 79, text: "In \"The Rocky Horror Picture Show\", who is the alien scientist of the castle?", options: ["Dr. Van Helsing", "Dr. Moreau", "Dr. Frank-N-Furter"], correctIndex: 2 },
+  { id: 80, text: "In \"Coraline\", what is the name of the girl who discovers the Other World?", options: ["Coraline Jones", "Wednesday Addams", "Matilda"], correctIndex: 0 }
 ];
 if (typeof module !== "undefined" && module.exports) module.exports = QUESTIONS;
