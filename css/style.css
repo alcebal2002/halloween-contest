@@ -329,7 +329,7 @@ h2 {
 
 /* Four neon poisons. The caption names the colour, so colour is never the only
    signal (spec §10.3). */
-.bottle-yellow { --liquid: #facc15; --liquid-soft: rgba(250, 204, 21, 0.22); }
+.bottle-green  { --liquid: #22c55e; --liquid-soft: rgba(34, 197, 94, 0.22); }
 .bottle-purple { --liquid: #a855f7; --liquid-soft: rgba(168, 85, 247, 0.22); }
 .bottle-red    { --liquid: #ef4444; --liquid-soft: rgba(239, 68, 68, 0.22); }
 .bottle-cyan   { --liquid: #22d3ee; --liquid-soft: rgba(34, 211, 238, 0.22); }
@@ -374,7 +374,7 @@ h2 {
   opacity: 1;
   filter: drop-shadow(0 0 5px var(--liquid-soft));
 }
-.slot-0 { --liquid: #facc15; --liquid-soft: rgba(250, 204, 21, 0.22); }
+.slot-0 { --liquid: #22c55e; --liquid-soft: rgba(34, 197, 94, 0.22); }
 .slot-1 { --liquid: #a855f7; --liquid-soft: rgba(168, 85, 247, 0.22); }
 .slot-2 { --liquid: #ef4444; --liquid-soft: rgba(239, 68, 68, 0.22); }
 .slot-3 { --liquid: #22d3ee; --liquid-soft: rgba(34, 211, 238, 0.22); }
@@ -475,11 +475,11 @@ h2 {
 }
 
 /* ---- Leaderboard (stats.html) ---- */
-.lb-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
+.lb-table { width: 100%; border-collapse: collapse; font-size: 17.5px; margin-top: 4px; }
 .lb-table th {
   text-align: left;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13.75px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding: 8px 6px;
@@ -508,7 +508,7 @@ h2 {
    artwork ships with its own light background, so it gets a rounded, glowing
    frame — against the dark card it reads as part of the theme rather than a raw
    white block. */
-.qr-block { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 26px 0 4px; }
+.qr-block { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 0 0 18px; }
 .qr-code {
   display: block;
   width: 200px;
@@ -540,7 +540,7 @@ h2 {
   .lb-table td::before {
     content: attr(data-label);
     color: var(--muted);
-    font-size: 11px;
+    font-size: 13.75px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     text-align: left;

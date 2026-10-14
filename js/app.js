@@ -25,10 +25,10 @@
   var note = "";                // "question set changed" note
   var el = {};
 
-  // Toxic yellow, deep purple, blood red, cyanide cyan — same order as the poison
+  // Toxic green, deep purple, blood red, cyanide cyan — same order as the poison
   // bottles in index.html. Each order slot carries the bottle's name for screen
   // readers, so the colour is never the only cue.
-  var BOTTLE_NAMES = ["Toxic yellow", "Deep purple", "Blood red", "Cyanide cyan"];
+  var BOTTLE_NAMES = ["Toxic green", "Deep purple", "Blood red", "Cyanide cyan"];
   var BONUS_BLINK_MS = 2000;    // how long a partial miss shows which positions were right
   var BONUS_FLASH_MS = 2000;    // how long the centred "+10 / +5 / +3" award stays up
 
