@@ -495,6 +495,12 @@ h2 {
   overflow-wrap: anywhere;
 }
 .lb-table td.lb-rank { color: var(--orange); font-weight: 700; width: 2.5em; }
+/* Five columns now that Score folds in Correct and Bonus, so the freed width
+   goes to the player name: the column is widened and the name is never broken
+   mid-word. The other cells keep `overflow-wrap: anywhere`, so a long
+   timestamp still folds instead of pushing the table sideways. */
+.lb-table th:nth-child(2) { width: 42%; }
+.lb-table td.lb-player { white-space: nowrap; }
 .lb-table tr.is-repeat td { color: var(--muted); opacity: 0.62; }
 .lb-table tr.is-skeleton td {
   height: 18px;
@@ -522,8 +528,8 @@ h2 {
 
 .lb-foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 14px; }
 
-/* Seven columns do not fit at 360px. The header row is dropped and every cell
-   reflows to its own labelled line, so no field is ever hidden. */
+/* The full table does not fit at 360px. The header row is dropped and every
+   cell reflows to its own labelled line, so no field is ever hidden. */
 @media (max-width: 559px) {
   .lb-table thead { display: none; }
   .lb-table, .lb-table tbody, .lb-table tr, .lb-table td { display: block; width: 100%; }
@@ -537,6 +543,9 @@ h2 {
     border: 0;
     text-align: right;
   }
+  /* Stacked layout has no column widths, so the name wraps again here rather
+     than forcing the card sideways. */
+  .lb-table td.lb-player { white-space: normal; }
   .lb-table td::before {
     content: attr(data-label);
     color: var(--muted);

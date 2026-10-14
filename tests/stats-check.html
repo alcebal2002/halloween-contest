@@ -184,17 +184,16 @@
     rec("7. every cell carries a non-empty data-label", allLabelled, "allLabelled=" + allLabelled);
 
     // Fixture row 0 is Bat: score 100, correct 8 - (0 % 4) = 8, bonus 0 % 3 = 0,
-    // elapsed 60000ms. The timestamp is compared against GameLogic rather than a
-    // literal, because toLocaleString() depends on the machine's locale — the
-    // point of the check is that the right field lands in the right column.
+    // elapsed 60000ms. Score folds the two counts in as "total (correct:bonus)".
+    // The timestamp is compared against GameLogic rather than a literal, because
+    // toLocaleString() depends on the machine's locale — the point of the check
+    // is that the right field lands in the right column.
     var first = rows[0];
-    rec("8. score, correct, bonus, time and finished land in the right columns",
-      cellText(first, 2) === "100" && cellText(first, 3) === "8" &&
-        cellText(first, 4) === "0" && cellText(first, 5) === "1m 00s" &&
-        cellText(first, 6) === win.GameLogic.formatTimestamp("2026-10-13T12:00:00.000Z"),
-      "score='" + cellText(first, 2) + "' correct='" + cellText(first, 3) +
-        "' bonus='" + cellText(first, 4) + "' time='" + cellText(first, 5) +
-        "' finished='" + cellText(first, 6) + "'");
+    rec("8. score (with correct:bonus), time and finished land in the right columns",
+      cellText(first, 2) === "100 (8:0)" && cellText(first, 3) === "1m 00s" &&
+        cellText(first, 4) === win.GameLogic.formatTimestamp("2026-10-13T12:00:00.000Z"),
+      "score='" + cellText(first, 2) + "' time='" + cellText(first, 3) +
+        "' finished='" + cellText(first, 4) + "'");
 
     // A board re-renders with no catch around it, so a malformed row must coerce
     // rather than throw. elapsed_ms 0 formats to "0s", a bad timestamp to "".
@@ -205,12 +204,10 @@
     }] });
     var bad = d.querySelectorAll("#lb-body tr")[0];
     rec("9. malformed numbers and a bad timestamp coerce instead of throwing",
-      bad.cells[2].textContent === "0" && bad.cells[3].textContent === "0" &&
-        bad.cells[4].textContent === "0" && bad.cells[5].textContent === "0s" &&
-        bad.cells[6].textContent === "",
-      "score='" + bad.cells[2].textContent + "' correct='" + bad.cells[3].textContent +
-        "' bonus='" + bad.cells[4].textContent + "' time='" + bad.cells[5].textContent +
-        "' finished='" + bad.cells[6].textContent + "'");
+      bad.cells[2].textContent === "0 (0:0)" && bad.cells[3].textContent === "0s" &&
+        bad.cells[4].textContent === "",
+      "score='" + bad.cells[2].textContent + "' time='" + bad.cells[3].textContent +
+        "' finished='" + bad.cells[4].textContent + "'");
 
     win.Leaderboard.render(d, { state: "loading", status: "Loading…" });
     rec("10. the loading state shows three skeleton rows and no message",
@@ -261,7 +258,7 @@
     // so the frame's content box (`narrow.clientWidth`) is the honest measure
     // of "is this really a 360px viewport"; scrollWidth <= clientWidth then
     // proves nothing overflows sideways inside it.
-    rec("14. seven columns reflow inside 360px without horizontal scroll",
+    rec("14. five columns reflow inside 360px without horizontal scroll",
       nd.documentElement.scrollWidth <= nd.documentElement.clientWidth &&
         narrow.clientWidth === 360,
       "scrollWidth=" + nd.documentElement.scrollWidth +

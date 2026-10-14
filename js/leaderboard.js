@@ -10,7 +10,7 @@
 
   var REFRESH_MS = 10000;
   var TOP_NAMES = 10;
-  var COLUMNS = ["#", "Player", "Score", "Correct", "Bonus", "Time", "Finished"];
+  var COLUMNS = ["#", "Player", "Score", "Time", "Finished"];
 
   // Pure ranking over a stream the server already ordered by
   // total_score desc, created_at asc.
@@ -77,6 +77,15 @@
 
   function num(v) { return Number(v) || 0; }
 
+  // The Score column folds the old Correct and Bonus counts into a single
+  // "total (correct:bonus)" reading, e.g. "25 (7:4)". The counts stay visible
+  // so the column still explains the total, while the table gains width for the
+  // player name.
+  function scoreText(row) {
+    return num(row.total_score) + " (" + num(row.correct_count) + ":" +
+      num(row.bonuses_matched) + ")";
+  }
+
   function displayName(row) {
     if (!row) return "";
     return (typeof row.nickname === "string") ? row.nickname : String(row.nickname || "");
@@ -93,10 +102,8 @@
       var tr = doc.createElement("tr");
       tr.className = "lb-row" + (isRepeat ? " is-repeat" : "");
       tr.appendChild(cell(doc, isRepeat ? "" : String(rank), "#", "lb-rank"));
-      tr.appendChild(cell(doc, displayName(row), "Player", ""));
-      tr.appendChild(cell(doc, String(num(row.total_score)), "Score", ""));
-      tr.appendChild(cell(doc, String(num(row.correct_count)), "Correct", ""));
-      tr.appendChild(cell(doc, String(num(row.bonuses_matched)), "Bonus", ""));
+      tr.appendChild(cell(doc, displayName(row), "Player", "lb-player"));
+      tr.appendChild(cell(doc, scoreText(row), "Score", ""));
       tr.appendChild(cell(doc, GL.formatDuration(num(row.elapsed_ms)) || "", "Time", ""));
       tr.appendChild(cell(doc, GL.formatTimestamp(row.finished_at), "Finished", ""));
       body.appendChild(tr);
