@@ -30,9 +30,14 @@
   var verdict = document.getElementById("verdict");
   var report = document.getElementById("report");
 
+  // Keep this runner hermetic: blank the publishable key so Start never reaches
+  // the live project and stays synchronous (the nickname claim is skipped when
+  // the project is unconfigured), exactly as layout-check.html and
+  // make-nostorage.js do.
+  var NO_KEY = '<script>window.SUPABASE_CONFIG.anonKey = "";<\/script>';
   var STUBS = {
-    emptypool: '<script>window.QUESTIONS = [];<\/script>',
-    getitem: '<script>' +
+    emptypool: NO_KEY + '<script>window.QUESTIONS = [];<\/script>',
+    getitem: NO_KEY + '<script>' +
       'try {' +
       '  Object.defineProperty(window, "localStorage", { configurable: true, value: {' +
       '    getItem: function () { throw new Error("read blocked by test"); },' +

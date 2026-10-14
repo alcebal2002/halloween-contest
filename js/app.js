@@ -23,6 +23,8 @@
   var flashTimer = null;        // clears bonusFlash after BONUS_BLINK_MS
   var pointsFlashTimer = null;  // clears the centred bonus award after BONUS_FLASH_MS
   var note = "";                // "question set changed" note
+  var nicknameChecking = false; // a nickname claim request is in flight
+  var pendingNickname = null;   // the name awaiting a duplicate confirmation
   var el = {};
 
   // Toxic green, deep purple, blood red, cyanide cyan — same order as the poison
@@ -116,6 +118,10 @@
       nickname: $("nickname"),
       nicknameError: $("nickname-error"),
       nicknameNote: $("nickname-note"),
+      nicknameCheckingNote: $("nickname-checking"),
+      nicknameDuplicate: $("nickname-duplicate"),
+      confirmNickname: $("btn-confirm-nickname"),
+      chooseAnother: $("btn-choose-another"),
       start: $("btn-start"),
       ready: $("btn-ready"),
       welcomeName: $("welcome-back-name"),
@@ -214,6 +220,8 @@
 
   function wire() {
     el.start.addEventListener("click", onStart);
+    el.confirmNickname.addEventListener("click", onConfirmNickname);
+    el.chooseAnother.addEventListener("click", onChooseAnother);
     el.nickname.addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); onStart(); }
     });
@@ -236,6 +244,7 @@
   }
 
   function onStart() {
+    if (nicknameChecking) return;   // a claim is already in flight
     var check = GameLogic.validateNickname(el.nickname.value);
     if (!check.ok) {
       el.nicknameError.hidden = false;
@@ -244,7 +253,39 @@
       return;
     }
     el.nicknameError.hidden = true;
-    state = GameLogic.createInitialState(check.nickname, pool);
+    pendingNickname = null;
+
+    // An empty question pool is a local, terminal error: it must not wait on
+    // the network before it is reported.
+    if (pool.filter(GameLogic.isValidQuestion).length === 0) { showNoQuestions(); return; }
+
+    var config = (typeof window !== "undefined" && window.SUPABASE_CONFIG) || null;
+    if (!ResultsApi.isConfigured(config)) { beginPlay(check.nickname); return; }
+
+    // Claiming the nickname is itself the check: the table's case-insensitive
+    // unique constraint answers a repeat use of the same name with 409/23505.
+    // Every other outcome — offline, timeout, server error — lets the player
+    // through rather than blocking the game, so a network problem can never
+    // lock a player out of the contest.
+    nicknameChecking = true;
+    render();
+    ResultsApi.claimNickname(config, check.nickname).then(function (res) {
+      nicknameChecking = false;
+      if (res.kind === "duplicate") {
+        pendingNickname = check.nickname;
+        render();
+        if (el.confirmNickname.focus) el.confirmNickname.focus();
+        return;
+      }
+      beginPlay(check.nickname);
+    });
+  }
+
+  // Installs a validated nickname and opens the instructions screen. Shared by
+  // the unconfigured (synchronous) path, a fresh claim, and a confirmed
+  // duplicate.
+  function beginPlay(nickname) {
+    state = GameLogic.createInitialState(nickname, pool);
     questions = GameLogic.resolveOrder(state, pool).questions;
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
@@ -254,6 +295,25 @@
     persist();
     view = "instructions";
     render();
+  }
+
+  // The name is already stored by whoever used it first, so confirming simply
+  // starts play under it — nothing new is written.
+  function onConfirmNickname() {
+    if (!pendingNickname) return;
+    var nickname = pendingNickname;
+    pendingNickname = null;
+    beginPlay(nickname);
+  }
+
+  // Dismisses the duplicate prompt and hands the screen back to the player. The
+  // typed name is kept so it can be edited, and submitting it again re-checks
+  // the table.
+  function onChooseAnother() {
+    pendingNickname = null;
+    nicknameChecking = false;
+    render();
+    el.nickname.focus();
   }
 
   function onReady() {
@@ -489,7 +549,19 @@
     SCREENS.forEach(function (id) { $(id).hidden = true; });
 
     if (view === "nickname") {
+      var duplicate = !!pendingNickname;
       el.nicknameNote.hidden = note !== "changed";
+      el.nicknameCheckingNote.hidden = !nicknameChecking;
+      el.nicknameDuplicate.hidden = !duplicate;
+      if (duplicate) {
+        el.nicknameDuplicate.textContent = pendingNickname +
+          " is already used. Confirm it to play under this name, or choose another one.";
+      }
+      el.confirmNickname.hidden = !duplicate;
+      el.chooseAnother.hidden = !duplicate;
+      $("nickname-duplicate-actions").hidden = !duplicate;
+      el.start.hidden = duplicate;
+      el.start.disabled = nicknameChecking;
       $("screen-nickname").hidden = false;
       return;
     }

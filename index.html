@@ -53,11 +53,17 @@
   <section id="screen-nickname" class="screen">
     <div class="field">
       <label for="nickname">Nickname</label>
-      <input id="nickname" type="text" maxlength="24" autocomplete="off" placeholder="e.g. GhostRider">
+      <input id="nickname" type="text" maxlength="20" autocomplete="off" placeholder="e.g. GhostRider">
       <p id="nickname-error" class="field-error" role="alert" hidden></p>
       <p id="nickname-note" class="field-note" hidden>The question set changed &mdash; starting over.</p>
+      <p id="nickname-checking" class="field-note" hidden>Checking that nickname&hellip;</p>
+      <p id="nickname-duplicate" class="field-error" role="alert" hidden></p>
     </div>
     <button id="btn-start" class="btn btn-primary" type="button">Start</button>
+    <div id="nickname-duplicate-actions" class="actions" hidden>
+      <button id="btn-confirm-nickname" class="btn btn-primary" type="button">Confirm NickName</button>
+      <button id="btn-choose-another" class="btn btn-ghost" type="button">Choose another one</button>
+    </div>
   </section>
 
   <section id="screen-instructions" class="screen" hidden>

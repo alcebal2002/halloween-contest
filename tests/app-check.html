@@ -37,14 +37,39 @@
     });
     return on.join("+") || "none";
   }
-  // The harness must never reach the real Supabase project: every save is
-  // answered from here. Set saveStub.mode to drive a different outcome; "slow"
-  // holds the response open for saveStub.delayMs so a step can act while a
+  // The harness must never reach the real Supabase project: every request is
+  // answered from here. Nickname claims go to their own stub and call log so the
+  // result-save counts stay independent of how many times a contest was started.
+  // Set saveStub.mode/nicknameStub.mode to drive a different outcome; "slow"
+  // holds the response open for that stub's delayMs so a step can act while a
   // request is still in flight.
   var saveStub = { mode: "success", calls: [], delayMs: 1000 };
+  var nicknameStub = { mode: "success", calls: [], delayMs: 1000 };
   function installSaveStub() {
     saveStub.calls = [];
+    nicknameStub.calls = [];
     W().fetch = function (url, opts) {
+      if (String(url).indexOf("/rest/v1/nicknames") !== -1) {
+        nicknameStub.calls.push({ url: String(url), opts: opts });
+        if (nicknameStub.mode === "duplicate") {
+          return Promise.resolve({
+            ok: false, status: 409,
+            json: function () {
+              return Promise.resolve({
+                code: "23505",
+                message: "duplicate key value violates unique constraint \"nicknames_lower_unique\"",
+                details: "Key (nickname_lower)=(bat) already exists.", hint: null
+              });
+            }
+          });
+        }
+        if (nicknameStub.mode === "network") return Promise.reject(new TypeError("Failed to fetch"));
+        var claimed = Promise.resolve({ ok: true, status: 201, json: function () { return Promise.resolve({}); } });
+        if (nicknameStub.mode === "slow") {
+          return new Promise(function (resolve) { setTimeout(function () { resolve(claimed); }, nicknameStub.delayMs); });
+        }
+        return claimed;
+      }
       saveStub.calls.push({ url: String(url), opts: opts });
       if (saveStub.mode === "duplicate") {
         return Promise.resolve({
@@ -78,6 +103,10 @@
   function pressEnter() {
     $("nickname").dispatchEvent(new (W().KeyboardEvent)("keydown", { key: "Enter", bubbles: true, cancelable: true }));
   }
+  // Start now claims the nickname against the (stubbed) backend before it opens
+  // the instructions screen, so a caller that used to assert the next screen
+  // synchronously waits one turn for the stubbed promise chain to settle.
+  function settle() { return wait(20); }
   function options() { return $("question-options").querySelectorAll(".option"); }
   function bottles() { return $("bonus-bottles").querySelectorAll(".bottle"); }
   function hud() { return $("hud-points").textContent + " - " + $("hud-question").textContent; }
@@ -136,9 +165,10 @@
     });
 
     /* ---- 7 (part) + start ---- */
-    step("7. Enter in the nickname input opens the instructions screen", function () {
+    await astep("7. Enter in the nickname input opens the instructions screen", async function () {
       type("Bat");
       pressEnter();
+      await settle();
       var st = app().getState();
       rec("7. Enter in the nickname input opens the instructions screen",
         app().getView() === "instructions" && screenOn() === "screen-instructions" &&
@@ -594,9 +624,10 @@
     /* ---- 5c. a stored welcomeBack phase must not make Continue a no-op ---- */
     W().localStorage.clear();
     await reload();
-    step("5c. stored phase welcomeBack: Continue resumes the question", function () {
+    await astep("5c. stored phase welcomeBack: Continue resumes the question", async function () {
       type("Bat");
       pressEnter();
+      await settle();
       click($("btn-ready"));
       var raw = JSON.parse(W().localStorage.getItem(KEY));
       raw.phase = "welcomeBack";
@@ -614,9 +645,10 @@
     /* ---- 8. zero-correct finish ---- */
     W().localStorage.clear();
     await reload();
-    step("start a fresh run as 'Unlucky'", function () {
+    await astep("start a fresh run as 'Unlucky'", async function () {
       type("Unlucky");
       pressEnter();
+      await settle();
       click($("btn-ready"));
       rec("start a fresh run as 'Unlucky'", app().getView() === "question", "view=" + app().getView());
     });
@@ -828,6 +860,118 @@
           " lastPosted=" + posted.session_id + " newSession=" + newSession);
       saveStub.mode = "success";
       saveStub.delayMs = 1000;
+    });
+
+    /* ---- nickname claims against the table ---- */
+    await astep("nick1. a new nickname is claimed against the table and play begins", async function () {
+      W().localStorage.clear();
+      await reload();
+      nicknameStub.mode = "success";
+      type("Fresh");
+      pressEnter();
+      await settle();
+      var call = nicknameStub.calls[0];
+      var posted = nicknameStub.calls.length === 1 &&
+        /\/rest\/v1\/nicknames$/.test(String(call && call.url)) &&
+        JSON.parse(call.opts.body).nickname === "Fresh";
+      rec("nick1. a new nickname is claimed against the table and play begins",
+        posted && app().getView() === "instructions" && screenOn() === "screen-instructions",
+        "calls=" + nicknameStub.calls.length + " view=" + app().getView() + " screen=" + screenOn());
+    });
+
+    await astep("nick2. an existing nickname offers Confirm, and Confirm starts play", async function () {
+      W().localStorage.clear();
+      await reload();
+      nicknameStub.mode = "duplicate";
+      type("Bat");
+      pressEnter();
+      await settle();
+      var msg = $("nickname-duplicate").textContent;
+      var promptShown = !$("nickname-duplicate").hidden &&
+        !$("btn-confirm-nickname").hidden && !$("btn-choose-another").hidden &&
+        $("btn-start").hidden && app().getView() === "nickname" && screenOn() === "screen-nickname";
+      click($("btn-confirm-nickname"));
+      var proceeded = app().getView() === "instructions" &&
+        app().getState().nickname === "Bat" && app().getState().phase === "instructions";
+      rec("nick2. an existing nickname offers Confirm, and Confirm starts play",
+        promptShown && msg.trim().length > 0 && proceeded && nicknameStub.calls.length === 1,
+        "prompt=" + promptShown + " msg='" + msg + "' view=" + app().getView() +
+          " calls=" + nicknameStub.calls.length);
+      nicknameStub.mode = "success";
+    });
+
+    await astep("nick3. Choose another one dismisses the prompt and keeps the typed name", async function () {
+      W().localStorage.clear();
+      await reload();
+      nicknameStub.mode = "duplicate";
+      type("Bat");
+      pressEnter();
+      await settle();
+      click($("btn-choose-another"));
+      var dismissed = $("nickname-duplicate").hidden && $("btn-confirm-nickname").hidden &&
+        $("btn-choose-another").hidden && !$("btn-start").hidden &&
+        app().getView() === "nickname" && !app().getState().sessionId &&
+        $("nickname").value === "Bat";
+      rec("nick3. Choose another one dismisses the prompt and keeps the typed name",
+        dismissed, "view=" + app().getView() + " value='" + $("nickname").value +
+          "' session='" + app().getState().sessionId + "'");
+      nicknameStub.mode = "success";
+    });
+
+    await astep("nick4. re-submitting a declined duplicate asks again", async function () {
+      W().localStorage.clear();
+      await reload();
+      nicknameStub.mode = "duplicate";
+      type("Bat");
+      pressEnter();
+      await settle();
+      click($("btn-choose-another"));
+      pressEnter();
+      await settle();
+      var again = !$("nickname-duplicate").hidden && !$("btn-confirm-nickname").hidden &&
+        app().getView() === "nickname" && nicknameStub.calls.length === 2;
+      rec("nick4. re-submitting a declined duplicate asks again", again,
+        "view=" + app().getView() + " promptShown=" + !$("nickname-duplicate").hidden +
+          " calls=" + nicknameStub.calls.length);
+      nicknameStub.mode = "success";
+    });
+
+    await astep("nick5. an unreachable claim lets the player start anyway (fail-open)", async function () {
+      W().localStorage.clear();
+      await reload();
+      nicknameStub.mode = "network";
+      type("Offline");
+      pressEnter();
+      await settle();
+      rec("nick5. an unreachable claim lets the player start anyway (fail-open)",
+        nicknameStub.calls.length === 1 &&
+          app().getView() === "instructions" && screenOn() === "screen-instructions" &&
+          !!app().getState().sessionId,
+        "calls=" + nicknameStub.calls.length + " view=" + app().getView() + " screen=" + screenOn());
+      nicknameStub.mode = "success";
+    });
+
+    await astep("nick6. Start is blocked while the claim is in flight, then play begins", async function () {
+      W().localStorage.clear();
+      await reload();
+      nicknameStub.mode = "slow";
+      nicknameStub.delayMs = 300;
+      type("Slow");
+      pressEnter();
+      var blocked = $("btn-start").disabled === true && app().getView() === "nickname";
+      // A second Start while the first is still in flight must not fire a
+      // second claim.
+      pressEnter();
+      // Let the first claim's microtask reach the stubbed fetch before counting,
+      // so a second in-flight Start would show up as a second call.
+      await settle();
+      var oneCall = nicknameStub.calls.length === 1;
+      await wait(nicknameStub.delayMs + 60);
+      rec("nick6. Start is blocked while the claim is in flight, then play begins",
+        blocked && oneCall && app().getView() === "instructions",
+        "blocked=" + blocked + " calls=" + nicknameStub.calls.length + " view=" + app().getView());
+      nicknameStub.mode = "success";
+      nicknameStub.delayMs = 1000;
     });
 
     /* ---- report ---- */

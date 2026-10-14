@@ -6,9 +6,9 @@ manual one.
 
 | Runner | How to run | Expected verdict |
 | --- | --- | --- |
-| `node tests/run-tests.js` | Node ≥ 14, from the project root | `92 passed, 0 failed`, exit code `0` |
-| `tests/test.html` | open directly (`file://`) or serve the folder | `92 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `44 passed, 0 failed` |
+| `node tests/run-tests.js` | Node ≥ 14, from the project root | `99 passed, 0 failed`, exit code `0` |
+| `tests/test.html` | open directly (`file://`) or serve the folder | `99 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `50 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `39 passed, 0 failed` |
 | `tests/stats-check.html` | serve the folder, open `/tests/stats-check.html` | `22 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
@@ -70,7 +70,14 @@ profile has to be fresh.
   already records the session, and a save still in flight when `Play again`
   is pressed, which must not swallow the next run's save or stamp its marker).
   Every save is answered from a stub, so no test
-  run can reach the live project.
+  run can reach the live project. Starting a contest also claims the nickname
+  against the `nicknames` table before the instructions screen opens; the same
+  runner covers that path (a fresh name is inserted and play begins, a name
+  already in the table offers **Confirm NickName** / **Choose another one**,
+  confirming plays under it and writes nothing new, declining keeps the typed
+  name and asks again on the next Start, and an unreachable check lets the
+  player start anyway). Nickname claims go to their own stub and call log, so the
+  result-save counts stay independent of how many times a contest was started.
 - **`layout-check.html`** — renders the page in a genuine 360px viewport and walks the whole
   flow (nickname → instructions → question → feedback → bonus with two bottles picked → bonus
   resolved → results), asserting at every stop that the document does not scroll sideways, the
@@ -96,7 +103,8 @@ profile has to be fresh.
   the not-configured path is reachable without editing `js/supabase-config.js`.
 - **`boot-variants.html`** — injects a fault before `js/app.js` into a copy of the real page
   (no duplicated markup): an empty question pool, and storage that accepts writes but throws
-  on reads.
+  on reads. It blanks the Supabase key first, so Start stays synchronous and never reaches the
+  live project — the storage fault, not a network race, is what these variants exercise.
 - **`nostorage-index.html`** — generated copy of `index.html` with `localStorage` blocked
   entirely, then plays a full contest in memory (nickname → instructions → 10 questions →
   results), asserting the save status stays hidden too (the generator blanks the
