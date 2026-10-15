@@ -153,15 +153,19 @@
 
   <section id="screen-results" class="screen" hidden>
     <h2 id="results-title"></h2>
-    <p class="score-label">Total points</p>
-    <p id="results-score" class="score"></p>
+    <div class="results-head">
+      <div>
+        <p class="score-label">Total points</p>
+        <p id="results-score" class="score"></p>
+      </div>
+      <a class="btn btn-ghost results-stats-link" href="stats.html">See overall results</a>
+    </div>
     <p id="results-time" class="elapsed"></p>
     <p id="results-finished" class="finished-at"></p>
     <ol id="results-review" class="review"></ol>
     <p id="results-save" class="save-status" aria-live="polite" hidden></p>
     <button id="btn-results-retry" class="btn btn-ghost" type="button" hidden>Retry save</button>
     <button id="btn-play-again" class="btn btn-primary" type="button">Play again</button>
-    <a class="btn btn-ghost results-stats-link" href="stats.html">See overall results</a>
   </section>
 
   <section id="screen-error" class="screen" hidden>

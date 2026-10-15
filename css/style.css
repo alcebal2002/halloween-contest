@@ -190,7 +190,10 @@ h2 {
 /* Anchors used as buttons need block layout + no underline so they line up
    with the real <button> elements around them. */
 a.btn { display: block; text-align: center; text-decoration: none; }
-.results-stats-link { margin-top: 10px; }
+/* Results screen: "See overall results" sits at the top, to the right of the
+   total points. */
+.results-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.results-stats-link { flex: none; padding: 8px 14px; font-size: 14px; }
 .btn-primary { background: var(--orange); color: #1a0f04; width: 100%; }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255, 122, 26, 0.35); }
 .btn-ghost { background: transparent; color: var(--muted); border-color: rgba(168, 159, 145, 0.4); }
