@@ -150,6 +150,12 @@ Constraints enforced at selection time: exactly 3 options; `correctIndex` in `0.
 `text`; unique numeric `id`. Invalid entries are skipped; if no valid question remains, the error
 screen in §7 is shown.
 
+> **Superseded (2026-10-15):** the question shape and the selection rule below are
+> replaced by `2026-10-15-traditions-and-question-mix-design.md`. Questions may now
+> carry an optional `category` (`traditions` | `folklore` | `films`), and selection
+> draws fixed category quotas (4/4/2) instead of a uniform shuffle. The rest of this
+> document still stands.
+
 ### Placeholder data
 
 `questions.js` ships with roughly 15 Halloween trivia questions. Each contest draws **10**
