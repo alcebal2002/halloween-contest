@@ -23,6 +23,18 @@ var BONUS_COLOR_COUNT = 4;           // poison bottles in play (tray order 0..3)
    as play time, so the elapsed total always reads like a plausible sitting. */
 var ELAPSED_MAX_GAP_MS = 5 * 60 * 1000;
 
+/* Question mix: a contest is deliberately balanced so film questions can never
+   be the majority. Questions may carry a `category`; an untagged question (or an
+   unknown slug) lands in the `general` bucket, which has no quota and is only
+   tapped to fill a deficit. That keeps an external bank without categories on
+   today's plain uniform draw. */
+var CATEGORY_QUOTAS = { traditions: 4, folklore: 4, films: 2 };
+var KNOWN_CATEGORIES = ["traditions", "folklore", "films"];
+
+function categoryOf(q) {
+  return q && KNOWN_CATEGORIES.indexOf(q.category) >= 0 ? q.category : "general";
+}
+
 function isValidQuestion(q) {
   return !!q &&
     typeof q === "object" &&
@@ -59,9 +71,40 @@ function dedupeById(list) {
 
 function selectQuestions(pool, rng) {
   var list = Array.isArray(pool) ? pool : [];
-  var valid = list.filter(isValidQuestion);
-  var unique = dedupeById(valid);
-  return shuffle(unique, rng).slice(0, QUESTIONS_PER_CONTEST);
+  var valid = dedupeById(list.filter(isValidQuestion));
+  // Draw order: the three known buckets first, then the untagged catch-all.
+  var order = KNOWN_CATEGORIES.concat("general");
+  var buckets = {};
+  order.forEach(function (cat) { buckets[cat] = []; });
+  valid.forEach(function (q) { buckets[categoryOf(q)].push(q); });
+  order.forEach(function (cat) { buckets[cat] = shuffle(buckets[cat], rng); });
+
+  var picked = [];
+  KNOWN_CATEGORIES.forEach(function (cat) {
+    picked = picked.concat(buckets[cat].slice(0, CATEGORY_QUOTAS[cat]));
+  });
+
+  /* A short bucket (a small bank, or an external file with few of a category)
+     would leave the contest unfinished. Fill the deficit one question at a time,
+     cycling the categories, so no single bucket absorbs the whole shortfall. */
+  var cursor = {};
+  KNOWN_CATEGORIES.forEach(function (cat) { cursor[cat] = CATEGORY_QUOTAS[cat]; });
+  cursor.general = 0;
+
+  while (picked.length < QUESTIONS_PER_CONTEST) {
+    var progressed = false;
+    for (var i = 0; i < order.length && picked.length < QUESTIONS_PER_CONTEST; i++) {
+      var cat = order[i];
+      if (cursor[cat] < buckets[cat].length) {
+        picked.push(buckets[cat][cursor[cat]++]);
+        progressed = true;
+      }
+    }
+    if (!progressed) break; // no supply left anywhere
+  }
+
+  // Shuffle the final deck so the category order is not predictable.
+  return shuffle(picked, rng);
 }
 
 function validateNickname(raw) {
@@ -446,6 +489,9 @@ var GameLogic = {
   BONUS_BASE_POINTS: BONUS_BASE_POINTS,
   BONUS_MISS_POINTS: BONUS_MISS_POINTS,
   ELAPSED_MAX_GAP_MS: ELAPSED_MAX_GAP_MS,
+  CATEGORY_QUOTAS: CATEGORY_QUOTAS,
+  KNOWN_CATEGORIES: KNOWN_CATEGORIES,
+  categoryOf: categoryOf,
   isValidQuestion: isValidQuestion,
   shuffle: shuffle,
   selectQuestions: selectQuestions,

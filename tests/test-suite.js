@@ -160,6 +160,76 @@
     assertEqual(input.length, 8, "input mutated");
   });
 
+  /* ---- Category quotas (2026-10-15 traditions + question-mix spec) ---- */
+
+  function taggedQuestion(id, category) {
+    var q = validQuestion(id);
+    q.category = category;
+    return q;
+  }
+  // Round-robin the three categories so each bucket is stocked well past its quota.
+  function taggedPool(n) {
+    var cats = ["traditions", "folklore", "films"];
+    var out = [];
+    for (var i = 1; i <= n; i++) out.push(taggedQuestion(i, cats[(i - 1) % 3]));
+    return out;
+  }
+  function countsByCategory(list) {
+    var out = {};
+    list.forEach(function (q) { out[q.category] = (out[q.category] || 0) + 1; });
+    return out;
+  }
+
+  test("the shipped bank tags every question and stocks every quota", function () {
+    BANK.forEach(function (q) {
+      assert(GL.KNOWN_CATEGORIES.indexOf(q.category) >= 0, "untagged or unknown category on id=" + q.id);
+    });
+    GL.KNOWN_CATEGORIES.forEach(function (cat) {
+      var n = BANK.filter(function (q) { return q.category === cat; }).length;
+      assert(n >= GL.CATEGORY_QUOTAS[cat], "category " + cat + " has " + n + ", below quota " + GL.CATEGORY_QUOTAS[cat]);
+    });
+  });
+
+  test("selectQuestions draws exactly the quotas from a stocked tagged pool", function () {
+    var picked = GL.selectQuestions(taggedPool(60), seededRandom(3));
+    assertEqual(picked.length, GL.QUESTIONS_PER_CONTEST, "did not fill a contest");
+    var counts = countsByCategory(picked);
+    GL.KNOWN_CATEGORIES.forEach(function (cat) {
+      assertEqual(counts[cat] || 0, GL.CATEGORY_QUOTAS[cat], "quota missed for " + cat);
+    });
+  });
+
+  test("selectQuestions hits 4 traditions / 4 folklore / 2 films on the real bank", function () {
+    var counts = countsByCategory(GL.selectQuestions(BANK, seededRandom(11)));
+    assertEqual(counts.traditions, 4, "traditions quota");
+    assertEqual(counts.folklore, 4, "folklore quota");
+    assertEqual(counts.films, 2, "films quota");
+  });
+
+  test("selectQuestions never lets films exceed their quota over many contests", function () {
+    for (var seed = 1; seed <= 200; seed++) {
+      var counts = countsByCategory(GL.selectQuestions(BANK, seededRandom(seed)));
+      assert((counts.films || 0) <= GL.CATEGORY_QUOTAS.films, "seed " + seed + " drew " + counts.films + " films");
+    }
+  });
+
+  test("selectQuestions fills a short category from the others and still returns a full contest", function () {
+    var pool = taggedPool(60).filter(function (q) { return !(q.category === "traditions" && q.id > 7); });
+    var picked = GL.selectQuestions(pool, seededRandom(5));
+    assertEqual(picked.length, GL.QUESTIONS_PER_CONTEST, "a short traditions bucket broke the contest");
+    var ids = picked.map(function (q) { return q.id; });
+    assertEqual(new Set(ids).size, ids.length, "duplicate ids in a deficit fill");
+    var counts = countsByCategory(picked);
+    assertEqual((counts.traditions || 0), 3, "did not take every available traditions question");
+    assert((counts.films || 0) <= GL.CATEGORY_QUOTAS.films, "deficit fill leaked extra films");
+  });
+
+  test("selectQuestions leaves an untagged pool to a plain uniform draw", function () {
+    var picked = GL.selectQuestions(makePool(25), seededRandom(9));
+    assertEqual(picked.length, GL.QUESTIONS_PER_CONTEST, "untagged pool did not fill a contest");
+    picked.forEach(function (q) { assert(GL.isValidQuestion(q), "invalid question from an untagged pool"); });
+  });
+
   /* ---- Task 2: state machine ---- */
 
   test("createInitialState parks a fresh contest on the instructions phase", function () {
@@ -672,9 +742,11 @@
 
   test("lastAnswerAt is overwritten by every subsequent answer", function () {
     var ctx = buildContest(GL, makePool(25), "Hero");
-    var first = GL.answerQuestion(ctx.state, ctx.questions, 0, new Date("2026-10-11T10:00:00.000Z"));
+    // Answer the first question incorrectly: the contest must stay on the
+    // question path, because a correct answer opens the bonus round instead.
+    var first = GL.answerQuestion(ctx.state, ctx.questions, wrongIndex(ctx.questions[0]), new Date("2026-10-11T10:00:00.000Z"));
     assertEqual(first.lastAnswerAt, "2026-10-11T10:00:00.000Z");
-    var second = GL.answerQuestion(GL.advance(first, ctx.questions, new Date("2026-10-11T10:01:00.000Z")), ctx.questions, 1, new Date("2026-10-11T10:05:00.000Z"));
+    var second = GL.answerQuestion(GL.advance(first, ctx.questions, new Date("2026-10-11T10:01:00.000Z")), ctx.questions, wrongIndex(ctx.questions[1]), new Date("2026-10-11T10:05:00.000Z"));
     assertEqual(second.lastAnswerAt, "2026-10-11T10:05:00.000Z", "lastAnswerAt did not advance to the newer answer");
     assert(second.lastAnswerAt !== first.lastAnswerAt, "stale timestamp kept");
   });
