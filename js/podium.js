@@ -2,14 +2,13 @@
   "use strict";
   var isNode = (typeof module !== "undefined" && module.exports);
   var LB = isNode ? require("./leaderboard.js") : root.Leaderboard;
-  var api = factory(LB, root);
+  var api = factory(LB);
   if (isNode) module.exports = api;
   else root.Podium = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (LB, rootRef) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (LB) {
   "use strict";
 
   var PLACE = 3;
-  var REFRESH_MS = 10000;
 
   function num(v) { return Number(v) || 0; }
 
@@ -95,14 +94,14 @@
     }
   }
 
-  var activeLoad = null;
-  var timerId = null;
-
+  // One-shot: fetch the window once and render it. The podium is a snapshot,
+  // not a live board, so nothing here schedules a later fetch.
   function loadWith(doc, api, config) {
     return api.fetchResults(config).then(function (res) {
       if (!res.ok) {
-        render(doc, { state: "error", status: "Couldn't load — retrying",
-                      message: "Couldn't load the podium — retrying." });
+        // A single load: there is no retry, so the failure is reported as-is.
+        render(doc, { state: "error", status: "Couldn't load",
+                      message: "Couldn't load the podium." });
         return res;
       }
       var podium = topThree(res.rows);
@@ -119,28 +118,6 @@
     });
   }
 
-  function reload() {
-    if (!activeLoad) return Promise.resolve(null);
-    return activeLoad();
-  }
-
-  function startPolling(load, ms) {
-    stopPolling();
-    var every = (typeof ms === "number" && ms > 0) ? ms : REFRESH_MS;
-    timerId = setInterval(function () {
-      if (!LB.shouldPoll(rootRef && rootRef.document)) return;
-      load();
-    }, every);
-    return timerId;
-  }
-
-  function stopPolling() {
-    if (timerId !== null && timerId !== undefined) {
-      clearInterval(timerId);
-      timerId = null;
-    }
-  }
-
   function boot(doc, api, config) {
     if (!doc || !api) return null;
     render(doc, { state: "loading", status: "Loading…" });
@@ -151,40 +128,15 @@
       return null;
     }
 
-    var inFlight = false;
-    activeLoad = function () {
-      if (inFlight) return Promise.resolve(null);
-      inFlight = true;
-      return loadWith(doc, api, config).then(function (res) {
-        inFlight = false;
-        return res;
-      });
-    };
-
-    var refresh = doc.getElementById("btn-pd-refresh");
-    if (refresh && refresh.addEventListener) {
-      refresh.addEventListener("click", function () { reload(); });
-    }
-    if (doc.addEventListener) {
-      doc.addEventListener("visibilitychange", function () {
-        if (doc.hidden) return;
-        reload();
-      });
-    }
-
-    reload();
-    startPolling(reload, REFRESH_MS);
+    // The initial (and only) query.
+    loadWith(doc, api, config);
     return null;
   }
 
   return {
     PLACE: PLACE,
-    REFRESH_MS: REFRESH_MS,
     topThree: topThree,
     render: render,
-    reload: reload,
-    startPolling: startPolling,
-    stopPolling: stopPolling,
     boot: boot
   };
 });
