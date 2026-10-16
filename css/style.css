@@ -515,17 +515,15 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .lb-table td.lb-player { white-space: nowrap; }
 .lb-table tr.is-repeat td { color: var(--muted); opacity: 0.62; }
 /* Podium: the top three rows get a magenta band so the standings read at a
-   glance. The shades deepen from 1st to 3rd and the text is forced to white,
-   which stays clearly legible on all three (each >= 4.5:1 contrast). */
+   glance. All three share the same shade (the one originally used for 3rd) and
+   white text, which stays clearly legible on it (contrast 10:1). */
 .lb-table tr.is-rank-1 td,
 .lb-table tr.is-rank-2 td,
 .lb-table tr.is-rank-3 td {
   color: #ffffff;
   border-bottom-color: rgba(255, 255, 255, 0.22);
+  background: #701a75;
 }
-.lb-table tr.is-rank-1 td { background: #a21caf; }
-.lb-table tr.is-rank-2 td { background: #86198f; }
-.lb-table tr.is-rank-3 td { background: #701a75; }
 .lb-table tr.is-rank-1 td.lb-rank,
 .lb-table tr.is-rank-2 td.lb-rank,
 .lb-table tr.is-rank-3 td.lb-rank { color: #ffffff; }
