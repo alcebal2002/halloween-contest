@@ -514,6 +514,21 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .lb-table th:nth-child(4) { width: 14.0%; }
 .lb-table td.lb-player { white-space: nowrap; }
 .lb-table tr.is-repeat td { color: var(--muted); opacity: 0.62; }
+/* Podium: the top three rows get a magenta band so the standings read at a
+   glance. The shades deepen from 1st to 3rd and the text is forced to white,
+   which stays clearly legible on all three (each >= 4.5:1 contrast). */
+.lb-table tr.is-rank-1 td,
+.lb-table tr.is-rank-2 td,
+.lb-table tr.is-rank-3 td {
+  color: #ffffff;
+  border-bottom-color: rgba(255, 255, 255, 0.22);
+}
+.lb-table tr.is-rank-1 td { background: #a21caf; }
+.lb-table tr.is-rank-2 td { background: #86198f; }
+.lb-table tr.is-rank-3 td { background: #701a75; }
+.lb-table tr.is-rank-1 td.lb-rank,
+.lb-table tr.is-rank-2 td.lb-rank,
+.lb-table tr.is-rank-3 td.lb-rank { color: #ffffff; }
 .lb-table tr.is-skeleton td {
   height: 18px;
   background: linear-gradient(90deg, rgba(168, 159, 145, 0.10), rgba(168, 159, 145, 0.04));
@@ -567,4 +582,9 @@ a.btn { display: block; text-align: center; text-decoration: none; }
     text-align: left;
     flex: 0 0 auto;
   }
+  /* On the podium band the muted label colour would sink into the magenta, so
+     the mobile labels inherit the row's white instead. */
+  .lb-table tr.is-rank-1 td::before,
+  .lb-table tr.is-rank-2 td::before,
+  .lb-table tr.is-rank-3 td::before { color: rgba(255, 255, 255, 0.85); }
 }

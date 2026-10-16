@@ -99,8 +99,11 @@
       if (!row) continue;
       var isRepeat = row.repeat === true;
       if (!isRepeat) rank++;
+      // The podium (1st/2nd/3rd) gets its own class so the styling can
+      // highlight it without the renderer knowing any colours.
+      var podium = (!isRepeat && rank <= 3) ? " is-rank-" + rank : "";
       var tr = doc.createElement("tr");
-      tr.className = "lb-row" + (isRepeat ? " is-repeat" : "");
+      tr.className = "lb-row" + (isRepeat ? " is-repeat" : "") + podium;
       tr.appendChild(cell(doc, isRepeat ? "" : String(rank), "#", "lb-rank"));
       tr.appendChild(cell(doc, displayName(row), "Player", "lb-player"));
       tr.appendChild(cell(doc, scoreText(row), "Score", ""));
