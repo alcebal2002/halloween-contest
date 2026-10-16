@@ -642,14 +642,16 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .podium-slot-1 .podium-name { color: var(--orange); text-shadow: 0 0 14px rgba(255, 122, 26, 0.45); }
 
 /* All three boxes share the leaderboard's magenta so the two pages read as one
-   theme; the winner is set apart by height, an orange rim and a glow. */
+   theme; the winner is set apart by height, an orange rim and a glow. The place
+   label is pinned to the top of the box and the figures are pushed to the
+   bottom by the score's auto margin. */
 .podium-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 2px;
-  padding: 14px 8px;
+  padding: 12px 8px 14px;
   border-radius: 12px 12px 6px 6px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: linear-gradient(180deg, #7d1f84, #56125c);
@@ -676,6 +678,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   font-size: clamp(30px, 9vw, 46px);
   line-height: 1;
   color: #ffffff;
+  margin-top: auto; /* drops the figures to the foot of the box, label stays up */
 }
 .podium-correct { font-size: 13px; color: rgba(255, 255, 255, 0.82); }
 
