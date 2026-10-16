@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GFT Halloween Contest Podium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="fog" aria-hidden="true"></div>
+<canvas id="pd-confetti" class="podium-confetti" aria-hidden="true"></canvas>
+
+<main class="card">
+  <header class="masthead">
+    <h1 class="title">Halloween Podium</h1>
+    <p id="pd-status" class="save-status" aria-live="polite">Loading&hellip;</p>
+  </header>
+
+  <div id="pd-board" class="podium" role="list">
+    <div class="podium-slot podium-slot-2" data-place="2" role="listitem">
+      <p class="podium-name">&hellip;</p>
+      <div class="podium-box">
+        <span class="podium-place">2nd</span>
+        <span class="podium-score">&ndash;</span>
+        <span class="podium-correct"></span>
+      </div>
+    </div>
+    <div class="podium-slot podium-slot-1" data-place="1" role="listitem">
+      <p class="podium-name">&hellip;</p>
+      <div class="podium-box">
+        <span class="podium-place">1st</span>
+        <span class="podium-score">&ndash;</span>
+        <span class="podium-correct"></span>
+      </div>
+    </div>
+    <div class="podium-slot podium-slot-3" data-place="3" role="listitem">
+      <p class="podium-name">&hellip;</p>
+      <div class="podium-box">
+        <span class="podium-place">3rd</span>
+        <span class="podium-score">&ndash;</span>
+        <span class="podium-correct"></span>
+      </div>
+    </div>
+  </div>
+
+  <p id="pd-message" class="lb-message" hidden></p>
+
+  <div class="actions actions-stack">
+    <a class="btn btn-ghost" href="stats.html">See the leaderboard</a>
+    <a class="btn btn-ghost" href="index.html">Back to the questionnaire</a>
+  </div>
+</main>
+
+<footer class="page-foot">Happy Halloween 🕸️</footer>
+
+<script src="js/game-logic.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/results-api.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/confetti.js"></script>
+<script src="js/podium.js"></script>
+<script>
+  Podium.boot(document, ResultsApi, window.SUPABASE_CONFIG);
+  Confetti.start(document.getElementById("pd-confetti"));
+</script>
+</body>
+</html>

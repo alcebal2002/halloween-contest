@@ -201,6 +201,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 /* Buttons always sit on their own line, with a clear gap above so they never
    crowd the last option or the order slots. */
 .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+/* Two secondary links that should stay one above the other even where .actions
+   would otherwise fan into a row (the stats page's leaderboard + podium). */
+.actions.actions-stack { flex-direction: column; }
+.actions.actions-stack .btn { width: 100%; }
 #btn-next { margin-top: 24px; }
 
 .option {
@@ -585,4 +589,104 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   .lb-table tr.is-rank-1 td::before,
   .lb-table tr.is-rank-2 td::before,
   .lb-table tr.is-rank-3 td::before { color: rgba(255, 255, 255, 0.85); }
+}
+
+/* ---- Podium (podium.html) ---- */
+
+/* The creature curtain is decorative and sits above the card, but never takes
+   a pointer event, so every button underneath stays clickable. */
+.podium-confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* A classic stand, laid out in DOM order 2nd / 1st / 3rd. Bottom-aligning the
+   columns puts every box on the same floor while the taller winner's box (and
+   so their name) rises above the others. */
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.podium-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* The name sits on top of its box at a size meant to be read across a room.
+   A min-height keeps the three names on a level band when one wraps or is an
+   empty placeholder. */
+.podium-name {
+  font-size: clamp(16px, 4.4vw, 24px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--bone);
+  overflow-wrap: anywhere;
+  min-height: 2.4em;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.podium-slot-1 .podium-name { color: var(--orange); text-shadow: 0 0 14px rgba(255, 122, 26, 0.45); }
+
+/* All three boxes share the leaderboard's magenta so the two pages read as one
+   theme; the winner is set apart by height, an orange rim and a glow. */
+.podium-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 14px 8px;
+  border-radius: 12px 12px 6px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, #7d1f84, #56125c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.podium-slot-1 .podium-box {
+  min-height: 170px;
+  border-color: rgba(255, 122, 26, 0.6);
+  box-shadow: 0 0 34px rgba(255, 122, 26, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.podium-slot-2 .podium-box { min-height: 134px; }
+.podium-slot-3 .podium-box { min-height: 116px; }
+
+.podium-place {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.podium-slot-1 .podium-place { color: #ffd9a8; }
+
+.podium-score {
+  font-family: var(--serif);
+  font-size: clamp(30px, 9vw, 46px);
+  line-height: 1;
+  color: #ffffff;
+}
+.podium-correct { font-size: 13px; color: rgba(255, 255, 255, 0.82); }
+
+/* An unfilled place is present but visibly empty. */
+.podium-slot:not(.has-player) .podium-box { opacity: 0.5; }
+.podium-slot:not(.has-player) .podium-name { color: var(--muted); }
+
+@media (max-width: 420px) {
+  .podium { gap: 6px; }
+  .podium-box { padding: 10px 4px; }
+  .podium-name { font-size: 15px; }
+  .podium-score { font-size: 26px; }
+  .podium-correct { font-size: 11px; }
 }

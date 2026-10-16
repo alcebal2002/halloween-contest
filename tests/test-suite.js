@@ -5,10 +5,12 @@
   var RA = isNode ? require("../js/results-api.js") : root.ResultsApi;
   var LB = isNode ? require("../js/leaderboard.js") : root.Leaderboard;
   var BANK = isNode ? require("../js/questions.js") : root.QUESTIONS;
-  var api = factory(GL, RA, LB, BANK, root);
+  var PODIUM = isNode ? require("../js/podium.js") : root.Podium;
+  var CONF = isNode ? require("../js/confetti.js") : root.Confetti;
+  var api = factory(GL, RA, LB, BANK, root, PODIUM, CONF);
   if (isNode) module.exports = api;
   else root.TestSuite = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, BANK, rootRef) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, BANK, rootRef, PODIUM, CONF) {
   "use strict";
 
   var tests = [];
@@ -1369,6 +1371,79 @@
   test("REFRESH_MS is ten seconds and TOP_NAMES is ten", function () {
     assertEqual(LB.REFRESH_MS, 10000, "auto-refresh cadence");
     assertEqual(LB.TOP_NAMES, 10, "distinct names shown");
+  });
+
+  /* ---- Podium: placements ---- */
+
+  test("topThree returns the three best distinct names in order", function () {
+    var rows = [lbRow("Bat", 90), lbRow("Cat", 80), lbRow("Dog", 70), lbRow("Eel", 60)];
+    var out = PODIUM.topThree(rows);
+    assertEqual(out.length, 3, "exactly three places");
+    assertEqual(out[0].nickname, "Bat", "first");
+    assertEqual(out[1].nickname, "Cat", "second");
+    assertEqual(out[2].nickname, "Dog", "third");
+    assertEqual(out[0].total_score, 90, "winner keeps its own score");
+  });
+
+  test("topThree folds a repeat run so one name cannot take two places", function () {
+    var rows = [lbRow("Bat", 90), lbRow("Bat", 40), lbRow("Cat", 80), lbRow("Dog", 70), lbRow("Eel", 60)];
+    var out = PODIUM.topThree(rows);
+    assertEqual(out.length, 3, "still three places");
+    assertEqual(out[0].nickname, "Bat", "winner first");
+    assertEqual(out[1].nickname, "Cat", "repeat must not push Cat out");
+    assertEqual(out[2].nickname, "Dog", "third place is the next distinct name");
+  });
+
+  test("topThree returns fewer than three when the window is short", function () {
+    var out = PODIUM.topThree([lbRow("Bat", 9), lbRow("Cat", 8)]);
+    assertEqual(out.length, 2, "no filler placements");
+  });
+
+  test("topThree tolerates anything that is not a list of rows", function () {
+    assertEqual(PODIUM.topThree([]).length, 0, "empty");
+    assertEqual(PODIUM.topThree(null).length, 0, "null");
+    assertEqual(PODIUM.topThree(undefined).length, 0, "undefined");
+    assertEqual(PODIUM.topThree("nope").length, 0, "string");
+  });
+
+  /* ---- Podium: confetti particles ---- */
+
+  test("createParticles seeds the requested number of themed creatures", function () {
+    var out = CONF.createParticles(320, 640, 12, seededRandom(3));
+    assertEqual(out.length, 12, "one particle per requested count");
+    for (var i = 0; i < out.length; i++) {
+      assert(CONF.KINDS.indexOf(out[i].kind) !== -1, "kind is a bat, spider or pumpkin");
+      assert(out[i].vy > 0, "every creature falls");
+      assert(out[i].size > 0, "every creature has a size");
+    }
+  });
+
+  test("createParticles keeps every creature inside the canvas on first paint", function () {
+    var out = CONF.createParticles(200, 400, 40, seededRandom(9));
+    for (var i = 0; i < out.length; i++) {
+      assert(out[i].x >= 0 && out[i].x <= 200, "x within width");
+      assert(out[i].y >= 0 && out[i].y <= 400, "y within height");
+    }
+  });
+
+  test("createParticles is deterministic for a seeded rng", function () {
+    var a = CONF.createParticles(200, 400, 5, seededRandom(11));
+    var b = CONF.createParticles(200, 400, 5, seededRandom(11));
+    assertEqual(JSON.stringify(a), JSON.stringify(b), "same seed, same swarm");
+  });
+
+  test("advance drops a creature and wraps it back to the top", function () {
+    var p = [{ kind: "bat", x: 100, y: 380, size: 20, vy: 100, swayAmp: 0, swayFreq: 1, phase: 0, spin: 0, angle: 0 }];
+    CONF.advance(p, 1, 200, 400); // 100px fall, past the 400px floor
+    assertEqual(p[0].y, -20, "a creature below the floor re-enters just above the top");
+    assertEqual(p[0].x, 100, "with no sway it keeps its column");
+  });
+
+  test("advance wraps a creature that drifts off the side", function () {
+    var p = [{ kind: "spider", x: 5, y: 100, size: 20, vy: 0, swayAmp: 0, swayFreq: 1, phase: 0, spin: 0, angle: 0 }];
+    p[0].x = -30; // already past the left edge
+    CONF.advance(p, 0.001, 200, 400);
+    assertEqual(p[0].x, 220, "a creature past the left edge re-enters from the right");
   });
 
   return { tests: tests };
