@@ -47,15 +47,19 @@
   // weaker one. Ties go to fewer correct answers, then to the LONGER time (the
   // best of the worst stays highest on this stand); rows arrive in that server
   // order, so the arrival index settles anything still equal.
-  function bottomThree(rows) {
+  // exclude lists names already on the top stand; they are skipped here so no
+  // one appears on both stands (the top stand takes priority).
+  function bottomThree(rows, exclude) {
     if (!Array.isArray(rows)) return [];
+    var skip = {};
+    (exclude || []).forEach(function (n) { skip[String(n).replace(/^\s+|\s+$/g, "")] = true; });
     var best = Object.create ? Object.create(null) : {};
     var order = [];
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (!row) continue;
       var name = (typeof row.nickname === "string") ? row.nickname.replace(/^\s+|\s+$/g, "") : "";
-      if (name === "") continue;
+      if (name === "" || skip[name]) continue;
       if (!best[name]) { best[name] = { row: row, at: i }; order.push(name); }
       else if (compareRuns(row, best[name].row) < 0) best[name].row = row;
     }
@@ -158,14 +162,14 @@
     });
   }
 
-  function loadBottomWith(doc, api, config) {
+  function loadBottomWith(doc, api, config, exclude) {
     return api.fetchLowestResults(config).then(function (res) {
       if (!res.ok) {
         render(doc, { state: "error", status: "Couldn't load",
                       message: "Couldn't load the bottom three." }, BOTTOM_IDS);
         return res;
       }
-      var rows = bottomThree(res.rows);
+      var rows = bottomThree(res.rows, exclude);
       render(doc, {
         state: rows.length ? "ready" : "empty",
         rows: rows,
@@ -191,8 +195,11 @@
     }
 
     // The initial (and only) queries, one per stand, so either can fail alone.
-    loadWith(doc, api, config);
-    loadBottomWith(doc, api, config);
+    // The bottom stand waits for the top one so it can skip its names.
+    loadWith(doc, api, config).then(function (res) {
+      var top = (res && res.ok) ? topThree(res.rows).map(displayName) : [];
+      return loadBottomWith(doc, api, config, top);
+    });
     return null;
   }
 

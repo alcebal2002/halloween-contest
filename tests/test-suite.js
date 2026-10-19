@@ -1441,6 +1441,12 @@
     assertEqual(out[0].elapsed_ms, 40000, "the quicker equal run is Bat's best");
   });
 
+  test("bottomThree skips names already on the top stand", function () {
+    var rows = [lbRow("Bat", 1), lbRow("Cat", 2), lbRow("Dog", 3), lbRow("Eel", 4)];
+    var out = PODIUM.bottomThree(rows, ["Cat"]);
+    assertEqual(out.map(function (r) { return r.nickname; }).join(","), "Bat,Dog,Eel", "Cat moves aside for the next name");
+  });
+
   test("fetchLowestResults orders by score ascending, later finisher first", function () {
     var seen = "";
     return RA.fetchLowestResults(saveConfig(), function (url) { seen = url; return Promise.resolve(jsonResponse(200, [])); })
