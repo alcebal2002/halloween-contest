@@ -7,10 +7,11 @@
   var BANK = isNode ? require("../js/questions.js") : root.QUESTIONS;
   var PODIUM = isNode ? require("../js/podium.js") : root.Podium;
   var CONF = isNode ? require("../js/confetti.js") : root.Confetti;
-  var api = factory(GL, RA, LB, BANK, root, PODIUM, CONF);
+  var CTL = isNode ? require("../js/control.js") : root.Control;
+  var api = factory(GL, RA, LB, BANK, root, PODIUM, CONF, CTL);
   if (isNode) module.exports = api;
   else root.TestSuite = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, BANK, rootRef, PODIUM, CONF) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (GL, RA, LB, BANK, rootRef, PODIUM, CONF, CTL) {
   "use strict";
 
   var tests = [];
@@ -1102,7 +1103,7 @@
       assertEqual(seen.url,
         "https://lyzuxvcsjavxhlovgeeu.supabase.co/rest/v1/contest_results" +
         "?select=session_id,nickname,total_score,correct_count,bonuses_matched,elapsed_ms,finished_at" +
-        "&order=total_score.desc,created_at.asc&limit=500", "windowed, score-descending endpoint");
+        "&order=total_score.desc,correct_count.desc,elapsed_ms.asc,created_at.asc&limit=500", "windowed, score-descending endpoint");
       assertEqual(seen.opts.method, "GET", "method");
       assertEqual(seen.opts.headers["apikey"], saveConfig().anonKey, "apikey header");
       assertEqual(seen.opts.headers["Authorization"], "Bearer " + saveConfig().anonKey, "bearer header");
@@ -1406,6 +1407,55 @@
     assertEqual(PODIUM.topThree("nope").length, 0, "string");
   });
 
+  /* ---- Podium: bottom three ---- */
+
+  test("bottomThree returns the three lowest names, worst first", function () {
+    var rows = [lbRow("Bat", 1), lbRow("Cat", 4), lbRow("Dog", 7), lbRow("Eel", 9)];
+    var out = PODIUM.bottomThree(rows);
+    assertEqual(out.map(function (r) { return r.nickname; }).join(","), "Bat,Cat,Dog", "worst first");
+  });
+
+  test("bottomThree judges each name by its best run", function () {
+    var rows = [lbRow("Bat", 1), lbRow("Cat", 2), lbRow("Dog", 3), lbRow("Eel", 4), lbRow("Bat", 50)];
+    var out = PODIUM.bottomThree(rows);
+    assertEqual(out.map(function (r) { return r.nickname; }).join(","), "Cat,Dog,Eel", "Bat improved and leaves the stand");
+  });
+
+  test("bottomThree keeps the server tie order and handles short or bad input", function () {
+    var out = PODIUM.bottomThree([lbRow("Late", 2), lbRow("Early", 2)]);
+    assertEqual(out[0].nickname, "Late", "later finisher is worse on a tie");
+    assertEqual(out.length, 2, "fewer than three names");
+    assertEqual(PODIUM.bottomThree(null).length, 0, "null");
+    assertEqual(PODIUM.bottomThree([lbRow("  ", 0)]).length, 0, "blank names skipped");
+  });
+
+  test("bottomThree breaks ties on correct answers, then puts the longer time first", function () {
+    function run(n, score, correct, ms) { return { nickname: n, total_score: score, correct_count: correct, elapsed_ms: ms }; }
+    var out = PODIUM.bottomThree([run("Fast", 5, 3, 60000), run("Slow", 5, 3, 90000), run("Fewer", 5, 2, 10000)]);
+    assertEqual(out.map(function (r) { return r.nickname; }).join(","), "Fewer,Slow,Fast", "fewer correct, then longer time");
+  });
+
+  test("bottomThree picks a name's best run using correct answers and time", function () {
+    function run(n, score, correct, ms) { return { nickname: n, total_score: score, correct_count: correct, elapsed_ms: ms }; }
+    var out = PODIUM.bottomThree([run("Bat", 5, 3, 90000), run("Bat", 5, 3, 40000)]);
+    assertEqual(out[0].elapsed_ms, 40000, "the quicker equal run is Bat's best");
+  });
+
+  test("fetchLowestResults orders by score ascending, later finisher first", function () {
+    var seen = "";
+    return RA.fetchLowestResults(saveConfig(), function (url) { seen = url; return Promise.resolve(jsonResponse(200, [])); })
+      .then(function (res) {
+        assertEqual(res.ok, true, "loaded");
+        assert(seen.indexOf("&order=total_score.asc,correct_count.asc,elapsed_ms.desc,created_at.desc&limit=500") !== -1, "ascending window: " + seen);
+      });
+  });
+
+  test("fetchResults still orders by score descending", function () {
+    var seen = "";
+    return RA.fetchResults(saveConfig(), function (url) { seen = url; return Promise.resolve(jsonResponse(200, [])); })
+      .then(function () { assert(seen.indexOf("order=total_score.desc,correct_count.desc,elapsed_ms.asc,created_at.asc") !== -1, "unchanged"); });
+  });
+
   /* ---- Podium: confetti particles ---- */
 
   test("createParticles seeds the requested number of themed creatures", function () {
@@ -1444,6 +1494,84 @@
     p[0].x = -30; // already past the left edge
     CONF.advance(p, 0.001, 200, 400);
     assertEqual(p[0].x, 220, "a creature past the left edge re-enters from the right");
+  });
+
+  /* ---- Control dashboard ---- */
+
+  function dashFetch(overrides) {
+    var o = overrides || {};
+    var calls = [];
+    var impl = function (url, opts) {
+      calls.push({ url: url, opts: opts });
+      if (opts.method === "HEAD") {
+        var isNick = url.indexOf("/nicknames") !== -1;
+        if (isNick && o.nickStatus) return Promise.resolve({ ok: false, status: o.nickStatus });
+        var total = isNick ? 42 : 17;
+        return Promise.resolve({ ok: true, status: 200, headers: { get: function (h) {
+          return h === "Content-Range" ? "*/" + total : null; } } });
+      }
+      if (url.indexOf("total_score.desc") !== -1) {
+        return Promise.resolve(jsonResponse(200, o.empty ? [] : [{ nickname: "Bat", total_score: 33 }]));
+      }
+      return Promise.resolve(jsonResponse(200, o.empty ? [] : [{ nickname: "Owl", elapsed_ms: 61500 }]));
+    };
+    return { impl: impl, calls: calls };
+  }
+
+  test("fetchDashboardStats counts both tables exactly and reads the top rows", function () {
+    var f = dashFetch();
+    return RA.fetchDashboardStats(saveConfig(), f.impl).then(function (res) {
+      assertEqual(res.ok, true, "ok");
+      assertEqual(res.nicknames.value, 42, "nickname count from Content-Range");
+      assertEqual(res.contests.value, 17, "contest count from Content-Range");
+      assertEqual(res.maxScore.row.total_score, 33, "max score row");
+      assertEqual(res.minTime.row.elapsed_ms, 61500, "min time row");
+      var heads = f.calls.filter(function (c) { return c.opts.method === "HEAD"; });
+      assertEqual(heads.length, 2, "two count requests");
+      assertEqual(heads[0].opts.headers["Prefer"], "count=exact", "exact count requested");
+      assert(f.calls.some(function (c) { return /order=elapsed_ms\.asc.*&limit=1$/.test(c.url); }), "fastest row request");
+    });
+  });
+
+  test("fetchDashboardStats isolates a failed figure", function () {
+    var f = dashFetch({ nickStatus: 500 });
+    return RA.fetchDashboardStats(saveConfig(), f.impl).then(function (res) {
+      assertEqual(res.nicknames.ok, false, "nicknames failed");
+      assertEqual(res.contests.ok, true, "contests still loaded");
+    });
+  });
+
+  test("fetchDashboardStats resolves unconfigured without a request", function () {
+    var called = false;
+    return RA.fetchDashboardStats({ url: "", anonKey: "" }, function () { called = true; }).then(function (res) {
+      assertEqual(res.kind, "unconfigured", "kind");
+      assertEqual(called, false, "no request");
+    });
+  });
+
+  test("fetchDashboardStats resolves even when fetch throws", function () {
+    return RA.fetchDashboardStats(saveConfig(), function () { throw new Error("boom"); }).then(function (res) {
+      assertEqual(res.ok, true, "the call itself resolves");
+      assertEqual(res.maxScore.ok, false, "each figure reports the failure");
+    });
+  });
+
+  test("Control.tiles formats values, empties and errors", function () {
+    var f = dashFetch();
+    return RA.fetchDashboardStats(saveConfig(), f.impl).then(function (res) {
+      var v = CTL.tiles(res);
+      assertEqual(v.nicknames.value, "42", "count");
+      assertEqual(v.maxScore.value, "33", "score");
+      assertEqual(v.maxScore.sub, "by Bat", "score holder");
+      assertEqual(v.minTime.value, GL.formatDuration(61500), "time uses the leaderboard format");
+      assertEqual(v.minTime.sub, "by Owl", "time holder");
+      return RA.fetchDashboardStats(saveConfig(), dashFetch({ empty: true, nickStatus: 503 }).impl);
+    }).then(function (res) {
+      var v = CTL.tiles(res);
+      assertEqual(v.maxScore.value, "—", "no results reads as a dash");
+      assertEqual(v.nicknames.value, "Error", "failed count reads as Error");
+      assertEqual(v.nicknames.error, true, "error flag");
+    });
   });
 
   return { tests: tests };

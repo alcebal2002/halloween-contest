@@ -10,7 +10,8 @@
   var REST_PATH = "/rest/v1/contest_results";
   var NICKNAMES_PATH = "/rest/v1/nicknames";
   var SELECT_COLUMNS = "session_id,nickname,total_score,correct_count,bonuses_matched,elapsed_ms,finished_at";
-  var ORDER_CLAUSE = "total_score.desc,created_at.asc";
+  var ORDER_CLAUSE = "total_score.desc,correct_count.desc,elapsed_ms.asc,created_at.asc";
+  var LOWEST_ORDER_CLAUSE = "total_score.asc,correct_count.asc,elapsed_ms.desc,created_at.desc";
   var FETCH_LIMIT = 500;
 
   // True only when the config carries a real https endpoint and a key that is
@@ -137,6 +138,18 @@
   // them back inside PostgREST's `nickname=in.(...)` grammar would mean
   // escaping attacker-shaped strings into a filter expression.
   function fetchResults(config, fetchImpl, timeoutMs) {
+    return fetchWindow(config, ORDER_CLAUSE, fetchImpl, timeoutMs);
+  }
+
+  // The same window read from the other end — lowest score first; on a tie
+  // fewer correct answers, then the longer time, then the later finisher — for the podium's bottom stand. A separate
+  // query because the top-500 window would lose the lowest scores once the
+  // table outgrows it.
+  function fetchLowestResults(config, fetchImpl, timeoutMs) {
+    return fetchWindow(config, LOWEST_ORDER_CLAUSE, fetchImpl, timeoutMs);
+  }
+
+  function fetchWindow(config, order, fetchImpl, timeoutMs) {
     if (!isConfigured(config)) {
       return Promise.resolve({ ok: false, kind: "unconfigured" });
     }
@@ -157,7 +170,7 @@
       .then(function () {
         var endpoint = String(config.url).replace(/\/+$/, "") + REST_PATH
           + "?select=" + SELECT_COLUMNS
-          + "&order=" + ORDER_CLAUSE
+          + "&order=" + order
           + "&limit=" + FETCH_LIMIT;
         return doFetch(endpoint, {
           method: "GET",
@@ -263,6 +276,97 @@
     });
   }
 
+  // Reads the control dashboard figures with four parallel requests: exact
+  // server-side counts of both tables (read from Content-Range, no rows sent)
+  // plus the single best-score and fastest-time rows. Each figure settles on
+  // its own, so one failed request only blanks its own tile. Same contract as
+  // the other calls: always resolves, never rejects, never throws.
+  function fetchDashboardStats(config, fetchImpl, timeoutMs) {
+    if (!isConfigured(config)) {
+      return Promise.resolve({ ok: false, kind: "unconfigured" });
+    }
+
+    var doFetch = fetchImpl;
+    if (!doFetch) {
+      if (typeof fetch === "undefined") {
+        return Promise.resolve({ ok: false, kind: "failed", detail: "no fetch available" });
+      }
+      doFetch = function () { return fetch.apply(null, arguments); };
+    }
+
+    var timeout = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : DEFAULT_TIMEOUT_MS;
+    var base = String(config.url).replace(/\/+$/, "");
+    var headers = { "apikey": config.anonKey, "Authorization": "Bearer " + config.anonKey };
+
+    function guarded(work) {
+      var controller = (typeof AbortController === "function") ? new AbortController() : null;
+      var timer = null;
+      var request = Promise.resolve()
+        .then(function () { return work(controller ? controller.signal : undefined); })
+        .catch(function (e) {
+          return { ok: false, detail: (e && e.message) ? e.message : "network error" };
+        });
+      var expired = new Promise(function (resolve) {
+        timer = setTimeout(function () {
+          if (controller) controller.abort();
+          resolve({ ok: false, detail: "timed out" });
+        }, timeout);
+      });
+      return Promise.race([request, expired]).then(function (outcome) {
+        if (timer) clearTimeout(timer);
+        return outcome;
+      });
+    }
+
+    function count(path) {
+      return guarded(function (signal) {
+        return doFetch(base + path + "?select=*", {
+          method: "HEAD",
+          headers: { "apikey": headers.apikey, "Authorization": headers.Authorization, "Prefer": "count=exact" },
+          signal: signal
+        }).then(function (res) {
+          if (!res || !res.ok) return { ok: false, detail: "status " + (res ? res.status : 0) };
+          var range = (res.headers && typeof res.headers.get === "function") ? res.headers.get("Content-Range") : null;
+          var m = /\/(\d+)\s*$/.exec(range || "");
+          if (!m) return { ok: false, detail: "missing count" };
+          return { ok: true, value: parseInt(m[1], 10) };
+        });
+      });
+    }
+
+    function topRow(columns, order) {
+      return guarded(function (signal) {
+        return doFetch(base + REST_PATH + "?select=" + columns + "&order=" + order + "&limit=1", {
+          method: "GET", headers: headers, signal: signal
+        }).then(function (res) {
+          if (!res || !res.ok) return { ok: false, detail: "status " + (res ? res.status : 0) };
+          return Promise.resolve(res.json()).then(function (rows) {
+            if (!Array.isArray(rows)) return { ok: false, detail: "unexpected payload" };
+            return { ok: true, row: rows.length ? rows[0] : null };
+          }, function () {
+            return { ok: false, detail: "unreadable payload" };
+          });
+        });
+      });
+    }
+
+    return Promise.all([
+      count(NICKNAMES_PATH),
+      count(REST_PATH),
+      topRow("nickname,total_score", ORDER_CLAUSE),
+      topRow("nickname,elapsed_ms", "elapsed_ms.asc,created_at.asc")
+    ]).then(function (r) {
+      return {
+        ok: true,
+        kind: "loaded",
+        nicknames: r[0],
+        contests: r[1],
+        maxScore: r[2],
+        minTime: r[3]
+      };
+    });
+  }
+
   // 409 is PostgREST's answer to a primary-key collision; 23505 is the Postgres
   // unique-violation code, checked too in case a proxy reshapes the status.
   function classifySaveError(status, body) {
@@ -277,6 +381,8 @@
     classifySaveError: classifySaveError,
     saveResult: saveResult,
     fetchResults: fetchResults,
-    claimNickname: claimNickname
+    fetchLowestResults: fetchLowestResults,
+    claimNickname: claimNickname,
+    fetchDashboardStats: fetchDashboardStats
   };
 });

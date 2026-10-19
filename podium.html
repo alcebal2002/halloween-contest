@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 <div class="fog" aria-hidden="true"></div>
@@ -19,6 +19,7 @@
     <p id="pd-status" class="save-status" aria-live="polite">Loading&hellip;</p>
   </header>
 
+  <h2 class="podium-badge podium-badge-best">Ghoulishly Good 👑</h2>
   <div id="pd-board" class="podium" role="list">
     <div class="podium-slot podium-slot-2" data-place="2" role="listitem">
       <p class="podium-name">&hellip;</p>
@@ -48,6 +49,38 @@
 
   <p id="pd-message" class="lb-message" hidden></p>
 
+  <section class="podium-bottom-wrap" aria-labelledby="pd-bottom-title">
+    <h2 id="pd-bottom-title" class="podium-badge podium-badge-worst">Haunted by the Score 👻🥄</h2>
+    <p id="pd-bottom-status" class="save-status" aria-live="polite"></p>
+    <div id="pd-bottom" class="podium podium-inverted" role="list">
+    <div class="podium-slot podium-slot-2" data-place="2" role="listitem">
+      <div class="podium-box">
+        <span class="podium-place">2nd</span>
+        <span class="podium-score">&ndash;</span>
+        <span class="podium-correct"></span>
+      </div>
+      <p class="podium-name">&hellip;</p>
+    </div>
+    <div class="podium-slot podium-slot-1" data-place="1" role="listitem">
+      <div class="podium-box">
+        <span class="podium-place">1st</span>
+        <span class="podium-score">&ndash;</span>
+        <span class="podium-correct"></span>
+      </div>
+      <p class="podium-name">&hellip;</p>
+    </div>
+    <div class="podium-slot podium-slot-3" data-place="3" role="listitem">
+      <div class="podium-box">
+        <span class="podium-place">3rd</span>
+        <span class="podium-score">&ndash;</span>
+        <span class="podium-correct"></span>
+      </div>
+      <p class="podium-name">&hellip;</p>
+    </div>
+    </div>
+    <p id="pd-bottom-message" class="lb-message" hidden></p>
+  </section>
+
   <div class="actions actions-stack">
     <a class="btn btn-ghost" href="stats.html">See the leaderboard</a>
     <a class="btn btn-ghost" href="index.html">Back to the questionnaire</a>
@@ -56,12 +89,12 @@
 
 <footer class="page-foot">Happy Halloween 🕸️</footer>
 
-<script src="js/game-logic.js"></script>
-<script src="js/supabase-config.js"></script>
-<script src="js/results-api.js"></script>
-<script src="js/leaderboard.js"></script>
-<script src="js/confetti.js"></script>
-<script src="js/podium.js"></script>
+<script src="js/game-logic.js?v=3"></script>
+<script src="js/supabase-config.js?v=3"></script>
+<script src="js/results-api.js?v=3"></script>
+<script src="js/leaderboard.js?v=3"></script>
+<script src="js/confetti.js?v=3"></script>
+<script src="js/podium.js?v=3"></script>
 <script>
   Podium.boot(document, ResultsApi, window.SUPABASE_CONFIG);
   Confetti.start(document.getElementById("pd-confetti"));
