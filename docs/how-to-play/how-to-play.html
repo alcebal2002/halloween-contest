@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How to play – GFT Halloween Contest</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0d0a14; --card:#14101c; --panel:#1c1726; --orange:#ff7a1a; --purple:#7c3aed;
+    --red:#dc2626; --green:#16a34a; --neon:#39ff14; --bone:#f5efe6; --muted:#a89f91; --cyan:#06b6d4; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1080px; height:1350px; overflow:hidden; font-family:Inter,"Segoe UI",sans-serif; color:var(--bone);
+    background: radial-gradient(1200px 600px at 50% -10%, rgba(124,58,237,.35), transparent 60%),
+      radial-gradient(900px 500px at 50% 115%, rgba(255,122,26,.22), transparent 60%), var(--bg);
+    display:flex; flex-direction:column; align-items:center; padding:60px 70px; gap:34px; }
+  .step { display:none; width:100%; flex-direction:column; align-items:center; gap:34px; height:100%; }
+  .step.on { display:flex; }
+  .badge { font-weight:900; letter-spacing:4px; color:var(--muted); font-size:26px; text-transform:uppercase; }
+  .badge b { color:var(--orange); }
+  h1 { font-family:Creepster,serif; font-weight:400; font-size:96px; color:var(--orange); letter-spacing:3px; text-align:center;
+    text-shadow:0 0 22px rgba(255,122,26,.6), 0 0 50px rgba(255,122,26,.25); line-height:1; }
+  .sub { font-size:32px; color:var(--muted); text-align:center; }
+  .mock { width:100%; background:linear-gradient(180deg,var(--card),#100d17); border:2px solid rgba(124,58,237,.55);
+    border-radius:22px; padding:40px; box-shadow:0 0 70px rgba(255,122,26,.14), 0 30px 70px rgba(0,0,0,.6);
+    display:flex; flex-direction:column; gap:22px; }
+  .lbl { font-size:24px; color:var(--muted); text-transform:uppercase; letter-spacing:2px; font-weight:700; }
+  .input { border:2px solid var(--purple); border-radius:14px; padding:22px 26px; font-size:36px; background:var(--panel); }
+  .input i { color:var(--orange); font-style:normal; animation:none; }
+  .btn { align-self:center; background:var(--orange); color:#1a0e05; font-weight:900; font-size:32px;
+    border-radius:999px; padding:18px 60px; box-shadow:0 0 30px rgba(255,122,26,.5); }
+  .opt { border:2px solid rgba(124,58,237,.5); background:var(--panel); border-radius:14px; padding:20px 24px; font-size:28px; }
+  .opt.ok { border-color:var(--green); background:rgba(22,163,74,.2); }
+  .opt.ko { border-color:var(--red); background:rgba(220,38,38,.2); }
+  .q { font-size:34px; font-weight:700; }
+  .flow { display:flex; gap:24px; width:100%; }
+  .path { flex:1; border-radius:20px; padding:28px; font-size:30px; text-align:center; line-height:1.35; }
+  .path.ok { background:rgba(22,163,74,.15); border:2px solid var(--green); }
+  .path.ko { background:rgba(220,38,38,.12); border:2px solid var(--red); }
+  .path big { display:block; font-size:60px; font-weight:900; margin-bottom:6px; }
+  .path.ok big { color:var(--neon); } .path.ko big { color:#fca5a5; }
+  .bottles { display:flex; justify-content:center; gap:34px; font-size:90px; }
+  .vial { width:90px; height:130px; border-radius:16px 16px 40px 40px; border:3px solid rgba(255,255,255,.5);
+    position:relative; box-shadow:0 0 30px currentColor; }
+  .vial::before { content:""; position:absolute; top:-26px; left:28px; width:28px; height:26px; background:#6b4f2a; border-radius:5px; }
+  .g { background:var(--green); color:var(--green);} .p { background:var(--purple); color:var(--purple);}
+  .r { background:var(--red); color:var(--red);} .c { background:var(--cyan); color:var(--cyan);}
+  .tries { display:flex; flex-direction:column; gap:16px; width:100%; }
+  .try { display:flex; align-items:center; justify-content:space-between; background:var(--panel);
+    border:2px solid rgba(124,58,237,.45); border-radius:16px; padding:20px 30px; font-size:32px; }
+  .try b { font-size:52px; font-weight:900; color:var(--neon); text-shadow:0 0 16px rgba(57,255,20,.5); }
+  .try.t2 b { color:var(--orange); } .try.t3 b { color:#facc15; }
+  .total { display:flex; justify-content:space-around; text-align:center; }
+  .total div { font-size:26px; color:var(--muted); text-transform:uppercase; letter-spacing:2px; }
+  .total b { display:block; font-size:72px; color:var(--orange); font-weight:900; letter-spacing:0; }
+  .podium { display:flex; align-items:flex-end; justify-content:center; gap:18px; }
+  .pod { width:220px; border-radius:14px 14px 0 0; text-align:center; font-weight:900; font-size:30px; padding-top:18px; }
+  .pod span { display:block; font-size:64px; }
+  .pod.p1 { height:260px; background:linear-gradient(#facc15,#a16207); color:#1a0e05; }
+  .pod.p2 { height:200px; background:linear-gradient(#e5e7eb,#6b7280); color:#111; }
+  .pod.p3 { height:160px; background:linear-gradient(#fb923c,#9a3412); color:#1a0e05; }
+  .note { font-size:28px; color:var(--muted); text-align:center; line-height:1.4; }
+  .note b { color:var(--bone); }
+  .foot { margin-top:auto; font-size:24px; letter-spacing:3px; color:rgba(168,159,145,.7); }
+</style>
+</head>
+<body>
+
+<section class="step" data-step="1">
+  <p class="badge">Step <b>1</b> of 4</p>
+  <h1>Choose your nickname</h1>
+  <p class="sub">Enter the crypt with a name the others will fear.</p>
+  <div class="mock">
+    <p class="lbl">Your nickname</p>
+    <div class="input">GhostRider<i>|</i></div>
+    <div class="btn">Start 🎃</div>
+  </div>
+  <p class="note">Your nickname appears on the <b>podium</b>.<br>Come back later with the same name to <b>continue</b> where you left off.</p>
+  <p class="foot">🎃 👻 🦇 GFT HALLOWEEN CONTEST</p>
+</section>
+
+<section class="step" data-step="2">
+  <p class="badge">Step <b>2</b> of 4</p>
+  <h1>Answer the question</h1>
+  <p class="sub">Pick one answer. You only get one shot!</p>
+  <div class="mock">
+    <p class="q">Which festival does Halloween descend from?</p>
+    <div class="opt ok">✅ Samhain</div>
+    <div class="opt ko">❌ Beltane</div>
+    <div class="opt">Imbolc</div>
+  </div>
+  <div class="flow">
+    <div class="path ok"><big>+1</big>Correct!<br>Unlock the<br><b>🧪 Bonus round</b></div>
+    <div class="path ko"><big>✗</big>Wrong…<br>No points.<br><b>Next question ➜</b></div>
+  </div>
+  <p class="foot">🎃 👻 🦇 GFT HALLOWEEN CONTEST</p>
+</section>
+
+<section class="step" data-step="3">
+  <p class="badge">Step <b>3</b> of 4</p>
+  <h1>Bonus: the poisons</h1>
+  <p class="sub">Guess the hidden order of the 4 poisons.<br>You have <b style="color:var(--orange)">3 attempts</b>.</p>
+  <div class="bottles">
+    <div class="vial g"></div><div class="vial p"></div><div class="vial r"></div><div class="vial c"></div>
+  </div>
+  <div class="tries">
+    <div class="try"><span>🥇 Matched at 1st attempt</span><b>+10</b></div>
+    <div class="try t2"><span>🥈 Matched at 2nd attempt</span><b>+5</b></div>
+    <div class="try t3"><span>🥉 Matched at 3rd attempt</span><b>+3</b></div>
+  </div>
+  <p class="note">Missed all 3? No bonus — on to the <b>next question</b>.</p>
+  <p class="foot">🎃 👻 🦇 GFT HALLOWEEN CONTEST</p>
+</section>
+
+<section class="step" data-step="4">
+  <p class="badge">Step <b>4</b> of 4</p>
+  <h1>Final score &amp; podium</h1>
+  <p class="sub">When all questions are done, see your totals.</p>
+  <div class="mock">
+    <div class="total">
+      <div>Correct<b>8</b></div>
+      <div>Bonus<b>+35</b></div>
+      <div>Total<b>43</b></div>
+    </div>
+  </div>
+  <div class="podium">
+    <div class="pod p2"><span>🥈</span>Witchy</div>
+    <div class="pod p1"><span>🏆</span>GhostRider</div>
+    <div class="pod p3"><span>🥉</span>Batman</div>
+  </div>
+  <p class="note">Highest score wins. <b>Ties are broken by time</b> — be fast!</p>
+  <p class="foot">🎃 👻 🦇 GFT HALLOWEEN CONTEST</p>
+</section>
+
+<script>
+  const n = new URLSearchParams(location.search).get('step') || '1';
+  document.querySelector(`[data-step="${n}"]`).classList.add('on');
+</script>
+</body>
+</html>
