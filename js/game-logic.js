@@ -6,13 +6,13 @@ var QUESTIONS_PER_CONTEST = 10;
 var MAX_NICKNAME_LENGTH = 20;
 var VALID_PHASES = ["nickname", "instructions", "welcomeBack", "question", "feedback", "bonus", "results"];
 
-/* Scoring: a correct answer pays 1 base point, and the poison bonus pays 10 on
+/* Scoring: a correct answer pays 5 base points, and the poison bonus pays 10 on
    top for a match on the 1st attempt, 5 on the 2nd and 3 on the 3rd, so the
-   question total is 11 / 6 / 4. A correct answer that never matches keeps its 1
-   point; a wrong answer pays 0 and never opens the bonus. */
+   question total is 15 / 10 / 8. A correct answer that never matches keeps its 5
+   points; a wrong answer pays 0 and never opens the bonus. */
 var BONUS_AWARD_POINTS = [10, 5, 3]; // bonus paid for a match on attempt 1, 2, 3
-var BONUS_MISS_POINTS = 1;           // correct answer, three failed attempts
-var BONUS_BASE_POINTS = 1;           // paid by the answer itself, before the bonus
+var BONUS_BASE_POINTS = 5;           // paid by the answer itself, before the bonus
+var BONUS_MISS_POINTS = BONUS_BASE_POINTS; // correct answer, three failed attempts
 /* Whole-question total for a match on attempt 1, 2, 3: the award plus the base. */
 var BONUS_TOTAL_POINTS = BONUS_AWARD_POINTS.map(function (award) { return award + BONUS_BASE_POINTS; });
 var MAX_POINTS_PER_QUESTION = BONUS_TOTAL_POINTS[0];

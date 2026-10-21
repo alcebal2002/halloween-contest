@@ -88,7 +88,7 @@
     clearPointsFlash();
   }
 
-  // The centred, transient "+1" (correct answer) or "+10 / +5 / +3" (matched
+  // The centred, transient "+5" (correct answer) or "+10 / +5 / +3" (matched
   // bonus) shown while an answer settles. Decorative: the verdict line
   // announces the same points, so the overlay is aria-hidden.
   function clearPointsFlash() {

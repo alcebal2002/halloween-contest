@@ -288,10 +288,10 @@
     var at = new Date("2026-10-11T14:52:11.000Z");
     var next = GL.answerQuestion(ctx.state, ctx.questions, q.correctIndex, at);
     assertEqual(next.phase, "feedback");
-    assertEqual(next.score, 1, "a correct answer is worth 1 point before the bonus");
+    assertEqual(next.score, 5, "a correct answer is worth 5 points before the bonus");
     assertEqual(next.answers.length, 1);
     assertEqual(next.answers[0].correct, true);
-    assertEqual(next.answers[0].points, 1, "base point must be recorded on the answer");
+    assertEqual(next.answers[0].points, 5, "base point must be recorded on the answer");
     assertEqual(next.answers[0].questionId, q.id);
     assertEqual(next.lastAnswerAt, "2026-10-11T14:52:11.000Z");
     assertEqual(next.finishedAt, null, "the contest is not finished until the results screen");
@@ -336,7 +336,7 @@
     var next = GL.advance(answered, ctx.questions, new Date());
     assertEqual(next.phase, "bonus");
     assertEqual(next.questionIndex, 0, "the bonus belongs to the question just answered");
-    assertEqual(next.score, 1, "points are only settled once the bonus resolves");
+    assertEqual(next.score, 5, "points are only settled once the bonus resolves");
     assertEqual(next.bonus.attemptsUsed, 0);
     assertEqual(next.bonus.resolved, false);
     assertEqual(next.bonus.matched, false);
@@ -386,7 +386,7 @@
     s = GL.advance(s, ctx.questions, at);
     assertEqual(s.phase, "bonus");
     s = GL.resolveBonus(s, s.bonus.target, at);
-    assertEqual(s.score, 11, "matching the first attempt on the last question is worth 11");
+    assertEqual(s.score, 15, "matching the first attempt on the last question is worth 15");
     s = GL.advance(s, ctx.questions, at);
     assertEqual(s.phase, "results");
     assertEqual(s.finishedAt, "2026-10-31T21:00:00.000Z");
@@ -468,16 +468,16 @@
     assertEqual(s.bonus.matched, true);
     assertEqual(s.bonus.attemptsUsed, 1);
     assertEqual(s.bonus.award, 10, "first attempt must pay a 10-point bonus");
-    assertEqual(s.answers[0].points, 11, "first attempt must total 11 points");
-    assertEqual(s.score, 11);
+    assertEqual(s.answers[0].points, 15, "first attempt must total 15 points");
+    assertEqual(s.score, 15);
   });
 
   test("bonus points: matching the 2nd attempt pays a 5-point bonus on top", function () {
     var s = playAttempts(GL, [false, true]);
     assertEqual(s.bonus.attemptsUsed, 2);
     assertEqual(s.bonus.award, 5, "second attempt must pay a 5-point bonus");
-    assertEqual(s.answers[0].points, 6, "second attempt must total 6 points");
-    assertEqual(s.score, 6);
+    assertEqual(s.answers[0].points, 10, "second attempt must total 10 points");
+    assertEqual(s.score, 10);
   });
 
   test("bonus points: matching the 3rd attempt pays a 3-point bonus on top", function () {
@@ -485,17 +485,17 @@
     assertEqual(s.bonus.attemptsUsed, 3);
     assertEqual(s.bonus.resolved, true, "the third attempt is the last one");
     assertEqual(s.bonus.award, 3, "third attempt must pay a 3-point bonus");
-    assertEqual(s.answers[0].points, 4, "third attempt must total 4 points");
-    assertEqual(s.score, 4);
+    assertEqual(s.answers[0].points, 8, "third attempt must total 8 points");
+    assertEqual(s.score, 8);
   });
 
-  test("bonus points: three misses still pay 1 for the correct answer", function () {
+  test("bonus points: three misses still pay 5 for the correct answer", function () {
     var s = playAttempts(GL, [false, false, false]);
     assertEqual(s.bonus.resolved, true);
     assertEqual(s.bonus.matched, false);
     assertEqual(s.bonus.attemptsUsed, 3);
-    assertEqual(s.answers[0].points, 1, "running out of attempts keeps the 1 base point");
-    assertEqual(s.score, 1);
+    assertEqual(s.answers[0].points, 5, "running out of attempts keeps the 5 base points");
+    assertEqual(s.score, 5);
   });
 
   test("a wrong answer never opens the bonus and pays nothing", function () {
@@ -532,12 +532,12 @@
     var resolved = playAttempts(GL, [true]);
     assertEqual(GL.resolveBonus(resolved, [0, 1, 2, 3], new Date()), resolved, "a resolved bonus must not accept more guesses");
     assertEqual(resolved.bonus.attemptsUsed, 1, "attempt count changed after resolution");
-    assertEqual(resolved.score, 11, "score changed after resolution");
+    assertEqual(resolved.score, 15, "score changed after resolution");
   });
 
-  test("every resolved bonus keeps the question total inside 0..11", function () {
+  test("every resolved bonus keeps the question total inside 0..15", function () {
     var combos = [[true], [false, true], [false, false, true], [false, false, false]];
-    var expected = [11, 6, 4, 1];
+    var expected = [15, 10, 8, 5];
     for (var i = 0; i < combos.length; i++) {
       var s = playAttempts(GL, combos[i]);
       assertEqual(s.answers[0].points, expected[i], "attempt pattern " + JSON.stringify(combos[i]));
@@ -611,9 +611,9 @@
     assert(restored !== null, "valid state rejected");
     assertEqual(restored.sessionId, answered.sessionId);
     assertEqual(restored.phase, "feedback");
-    assertEqual(restored.score, 1);
+    assertEqual(restored.score, 5);
     assertEqual(restored.questionIndex, 0);
-    assertEqual(restored.answers[0].points, 1);
+    assertEqual(restored.answers[0].points, 5);
     assertEqual(restored.lastAnswerAt, answered.lastAnswerAt);
   });
 
@@ -628,10 +628,10 @@
     assertEqual(restored.bonus.attemptsUsed, 1, "the attempt used before the reload was lost");
     assertEqual(restored.bonus.target.length, 4, "the hidden order must survive a reload");
     assertEqual(restored.bonus.resolved, false);
-    assertEqual(restored.score, 1, "the base point must still be counted after a reload");
+    assertEqual(restored.score, 5, "the base point must still be counted after a reload");
     var resumed = GL.resolveBonus(restored, restored.bonus.target, new Date());
     assertEqual(resumed.bonus.resolved, true, "the second attempt must be usable after a reload");
-    assertEqual(resumed.answers[0].points, 6, "matching on the second attempt must total 6 after a reload");
+    assertEqual(resumed.answers[0].points, 10, "matching on the second attempt must total 10 after a reload");
   });
 
   test("validateStoredState rejects a corrupt bonus", function () {
@@ -671,7 +671,7 @@
     var ctx = buildContest(GL, pool, "Hero");
     var answered = GL.answerQuestion(ctx.state, ctx.questions, ctx.questions[0].correctIndex, new Date());
     var inflated = JSON.parse(JSON.stringify(answered));
-    inflated.score = 5;
+    inflated.score = 15;
     assertEqual(GL.validateStoredState(inflated, pool), null, "score inflated without points behind it");
     var deflated = JSON.parse(JSON.stringify(answered));
     deflated.score = 0;
@@ -729,7 +729,7 @@
       s = playStep(GL, s, ctx.questions, i === 0, new Date(at.getTime() + i * 60000));
     }
     assertEqual(s.phase, "results");
-    assertEqual(s.score, 1, "one correct answer (base point, bonus missed) and nine wrong ones");
+    assertEqual(s.score, 5, "one correct answer (base point, bonus missed) and nine wrong ones");
     var restored = GL.validateStoredState(JSON.parse(JSON.stringify(s)), pool);
     assert(restored !== null, "finished state rejected on resume");
     assertEqual(restored.finishedAt, s.finishedAt, "finishedAt lost in the round-trip");
@@ -737,8 +737,8 @@
     assertEqual(restored.answers.length, ctx.questions.length, "answers lost in the round-trip");
     assertEqual(restored.answers[0].correct, true, "first answer contents changed");
     assertEqual(restored.answers[1].correct, false, "second answer contents changed");
-    assertEqual(restored.answers[0].points, 1, "points lost in the round-trip");
-    assertEqual(restored.score, 1, "score changed in the round-trip");
+    assertEqual(restored.answers[0].points, 5, "points lost in the round-trip");
+    assertEqual(restored.score, 5, "score changed in the round-trip");
     assertEqual(restored.bonus, null, "the bonus must be cleared once the contest ends");
     assert(restored.elapsedMs > 0, "the finished contest must carry a play time");
   });
@@ -776,8 +776,8 @@
     });
     assertEqual(GL.validateStoredState(tooMany, pool), null, "question phase with an answer already recorded accepted");
     var inSync = Object.assign({}, ctx.state, {
-      phase: "question", questionIndex: 1, score: 1,
-      answers: [{ questionId: ctx.questions[0].id, selected: 0, correct: true, points: 1 }]
+      phase: "question", questionIndex: 1, score: 5,
+      answers: [{ questionId: ctx.questions[0].id, selected: 0, correct: true, points: 5 }]
     });
     assert(GL.validateStoredState(inSync, pool) !== null, "an in-sync mid-contest state was rejected");
   });
@@ -953,14 +953,14 @@
     var base = {
       sessionId: "hc_abc-123",
       nickname: "Bat",
-      score: 12,
+      score: 48,
       elapsedMs: 91234.6,
       finishedAt: "2026-10-13T12:00:00.000Z",
       answers: [
-        { questionId: 1, selected: 0, correct: true,  points: 5 },
-        { questionId: 2, selected: 1, correct: true,  points: 3 },
-        { questionId: 3, selected: 2, correct: true,  points: 2 },
-        { questionId: 4, selected: 0, correct: true,  points: 1 },
+        { questionId: 1, selected: 0, correct: true,  points: 15},
+        { questionId: 2, selected: 1, correct: true,  points: 10},
+        { questionId: 3, selected: 2, correct: true,  points: 8},
+        { questionId: 4, selected: 0, correct: true,  points: 5},
         { questionId: 5, selected: 1, correct: false, points: 0 }
       ]
     };
@@ -974,9 +974,9 @@
     var row = RA.buildResultRow(finishedState());
     assertEqual(row.session_id, "hc_abc-123", "session_id");
     assertEqual(row.nickname, "Bat", "nickname");
-    assertEqual(row.total_score, 12, "total_score");
+    assertEqual(row.total_score, 48, "total_score");
     assertEqual(row.correct_count, 4, "correct_count counts every correct answer");
-    assertEqual(row.bonuses_matched, 3, "bonuses_matched counts points > 1 only");
+    assertEqual(row.bonuses_matched, 3, "bonuses_matched counts points > 5 only");
     assertEqual(row.elapsed_ms, 91235, "elapsed_ms is rounded to whole ms");
     assertEqual(row.finished_at, "2026-10-13T12:00:00.000Z", "finished_at passes through unchanged");
     assertEqual(Object.keys(row).length, 7, "no extra columns are invented");
@@ -1003,8 +1003,8 @@
     // must not be produced in the first place.
     var row = RA.buildResultRow(finishedState({
       answers: [
-        { questionId: 1, selected: 0, correct: false, points: 5 },
-        { questionId: 2, selected: 1, correct: true,  points: 3 }
+        { questionId: 1, selected: 0, correct: false, points: 15},
+        { questionId: 2, selected: 1, correct: true,  points: 10}
       ]
     }));
     assertEqual(row.correct_count, 1, "correct_count");

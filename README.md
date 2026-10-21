@@ -8,7 +8,7 @@ A browser-based Halloween trivia contest with a bottle-order bonus game, resumab
 
 1. Enter a nickname of up to 20 characters and read the instructions. When Supabase is configured, the app attempts to register the nickname. A previously used name offers a choice to continue under that name or choose another; a network failure does not block play.
 2. Answer ten multiple-choice questions, each with three options. The default selection draws four traditions questions, four folklore questions, and two film questions, then shuffles their order.
-3. See immediate feedback and the correct answer. A correct answer earns one point and unlocks the Poison Bonus; an incorrect answer earns zero and skips the bonus.
+3. See immediate feedback and the correct answer. A correct answer earns five points and unlocks the Poison Bonus; an incorrect answer earns zero and skips the bonus.
 4. In the bonus, arrange four distinct colored bottles to match a hidden random order. There are three attempts. Partial matches briefly highlight correct positions; an unsuccessful final attempt reveals the target order.
 5. Finish with a total score, elapsed play time, completion timestamp, and a question-by-question answer review. Play again starts a new randomized session under the same nickname.
 
@@ -18,13 +18,13 @@ The score and question progress remain visible during play. The layout adapts to
 
 | Outcome | Base Points | Bonus Points | Question Total |
 | --- | ---: | ---: | ---: |
-| Correct answer, bonus matched on attempt 1 | 1 | 10 | 11 |
-| Correct answer, bonus matched on attempt 2 | 1 | 5 | 6 |
-| Correct answer, bonus matched on attempt 3 | 1 | 3 | 4 |
-| Correct answer, no bonus match | 1 | 0 | 1 |
+| Correct answer, bonus matched on attempt 1 | 5 | 10 | 15 |
+| Correct answer, bonus matched on attempt 2 | 5 | 5 | 10 |
+| Correct answer, bonus matched on attempt 3 | 5 | 3 | 8 |
+| Correct answer, no bonus match | 5 | 0 | 5 |
 | Incorrect answer | 0 | 0 | 0 |
 
-The maximum score for a ten-question contest is **110 points**.
+The maximum score for a ten-question contest is **150 points**.
 
 ### Saved Progress and Results
 

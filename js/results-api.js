@@ -25,11 +25,12 @@
     return true;
   }
 
-  // Points are 5/3/2 for a matched bonus, 1 for a correct answer whose bonus was
-  // missed, and 0 for a wrong answer — so anything above 1 is a won bonus.
+  // Points are 15/10/8 for a matched bonus, 5 for a correct answer whose bonus
+  // was missed, and 0 for a wrong answer — so anything above 5 is a won bonus.
+  var BASE_POINTS = 5;
   function pointsOf(answer) {
     if (typeof answer.points === "number") return answer.points;
-    return answer.correct ? 1 : 0;
+    return answer.correct ? BASE_POINTS : 0;
   }
 
   // Maps a finished contest to the row stored in contest_results. Returns null
@@ -47,7 +48,7 @@
       // A bonus only ever pays on a correct answer, so requiring it here keeps
       // bonuses_matched at or below correct_count even for a tampered state —
       // the column the table's check constraint would otherwise reject.
-      if (a.correct && pointsOf(a) > 1) bonuses++;
+      if (a.correct && pointsOf(a) > BASE_POINTS) bonuses++;
     });
 
     return {

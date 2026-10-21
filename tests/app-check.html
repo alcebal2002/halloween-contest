@@ -202,7 +202,7 @@
     });
 
     /* ---- immediate feedback ---- */
-    step("immediate feedback: verdict, correct option marked, options locked, score 1", function () {
+    step("immediate feedback: verdict, correct option marked, options locked, score 5", function () {
       var q = app().getQuestions()[0];
       click(options()[q.correctIndex]);
       var fBtns = $("feedback-options").querySelectorAll(".option");
@@ -211,9 +211,9 @@
       var srHidden = $("feedback-verdict").classList.contains("sr-only");
       var nextLabel = $("btn-next").textContent;
       var st = app().getState();
-      rec("immediate feedback: 'Correct!' only for screen readers, correct option marked, options locked, score 1",
+      rec("immediate feedback: 'Correct!' only for screen readers, correct option marked, options locked, score 5",
         app().getView() === "feedback" && $("feedback-verdict").textContent === "Correct!" &&
-          srHidden && allDisabled && marked && st.score === 1 && hud() === "Total Points: 1 - Question 1/10" &&
+          srHidden && allDisabled && marked && st.score === 5 && hud() === "Total Points: 5 - Question 1/10" &&
           nextLabel === "Poison Bonus!",
         "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent +
           " srOnly=" + srHidden + " disabled=" + allDisabled + " marked=" + marked +
@@ -222,13 +222,13 @@
 
     /* The correct answer's 1-point base flashes in the middle of the screen, the
        same "+N" overlay the bonus award uses. */
-    step("immediate reward: the correct answer's +1 fades in centred like the bonus award", function () {
+    step("immediate reward: the correct answer's +5 fades in centred like the bonus award", function () {
       var flash = $("points-flash");
       var cs = W().getComputedStyle(flash);
       var centred = cs.position === "fixed" &&
         cs.alignItems === "center" && cs.justifyContent === "center";
-      rec("the correct answer's +1 fades in centred like the bonus award",
-        !flash.hidden && $("points-flash-text").textContent === "+1" && centred,
+      rec("the correct answer's +5 fades in centred like the bonus award",
+        !flash.hidden && $("points-flash-text").textContent === "+5" && centred,
         "hidden=" + flash.hidden + " text='" + $("points-flash-text").textContent +
           "' position=" + cs.position + " centred=" + centred);
     });
@@ -250,7 +250,7 @@
       click($("btn-continue"));
       var st = app().getState();
       rec("1b. Continue restores the verdict and Next button, score unchanged",
-        app().getView() === "feedback" && $("feedback-verdict").textContent.length > 0 && st.score === 1 &&
+        app().getView() === "feedback" && $("feedback-verdict").textContent.length > 0 && st.score === 5 &&
           $("btn-next").textContent === "Poison Bonus!",
         "view=" + app().getView() + " verdict=" + $("feedback-verdict").textContent + " score=" + st.score +
           " nextLabel='" + $("btn-next").textContent + "'");
@@ -266,7 +266,7 @@
           $("bonus-attempts").textContent.indexOf("Attempts left") === 0 &&
           $("btn-bonus-check").disabled === true &&
           $("btn-bonus-next").hidden === true &&
-          hud() === "Total Points: 1 - Question 1/10",
+          hud() === "Total Points: 5 - Question 1/10",
         "view=" + app().getView() + " phase=" + st.phase + " attempts='" + $("bonus-attempts").textContent +
           "' checkDisabled=" + $("btn-bonus-check").disabled + " hud='" + hud() + "'");
     });
@@ -356,16 +356,16 @@
         "color=" + color);
     });
 
-    step("2d. matching the order on the first attempt pays an 11-point question", function () {
+    step("2d. matching the order on the first attempt pays a 15-point question", function () {
       click($("btn-bonus-check"));
       var st = app().getState();
       var verdict = $("bonus-verdict").textContent;
       var srOnly = $("bonus-verdict").classList.contains("sr-only");
-      rec("2d. matching the order on the first attempt pays an 11-point question and announces the award to screen readers",
+      rec("2d. matching the order on the first attempt pays a 15-point question and announces the award to screen readers",
         st.bonus.resolved === true && st.bonus.matched === true && st.bonus.attemptsUsed === 1 &&
-          st.bonus.award === 10 && st.answers[0].points === 11 && st.score === 11 &&
+          st.bonus.award === 10 && st.answers[0].points === 15 && st.score === 15 &&
           verdict.indexOf("Match on attempt 1") === 0 && verdict.indexOf("+10") > -1 && srOnly &&
-          $("btn-bonus-next").hidden === false && hud() === "Total Points: 11 - Question 1/10",
+          $("btn-bonus-next").hidden === false && hud() === "Total Points: 15 - Question 1/10",
         "resolved=" + st.bonus.resolved + " attempts=" + st.bonus.attemptsUsed +
           " award=" + st.bonus.award + " points=" + st.answers[0].points + " score=" + st.score +
           " srOnly=" + srOnly + " verdict='" + verdict + "' hud='" + hud() + "'");
@@ -419,7 +419,7 @@
       rec("2e. the bonus Next button advances to question 2",
         app().getView() === "question" && app().getState().questionIndex === 1 &&
           $("question-progress").textContent === "Question 2 of 10" &&
-          hud() === "Total Points: 11 - Question 2/10",
+          hud() === "Total Points: 15 - Question 2/10",
         "view=" + app().getView() + " progress=" + $("question-progress").textContent + " hud='" + hud() + "'");
     });
 
@@ -441,7 +441,7 @@
       var s2 = app().getState();
       rec("f1. a second correct answer opens a fresh bonus round",
         app().getView() === "bonus" && s2.bonus && s2.bonus.attemptsUsed === 0 && s2.bonus.resolved === false &&
-          hud() === "Total Points: 12 - Question 2/10",
+          hud() === "Total Points: 20 - Question 2/10",
         "view=" + app().getView() + " attempts=" + (s2.bonus && s2.bonus.attemptsUsed) + " hud='" + hud() + "'");
     });
 
@@ -481,7 +481,7 @@
       var locked = Array.prototype.every.call(bottles(), function (b) { return b.disabled; });
       var verdictHidden = $("bonus-verdict").classList.contains("sr-only");
       rec("f2. a partial match blinks the right position green and freezes the round, miss only spoken",
-        st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && st.score === 12 &&
+        st.bonus.resolved === false && st.bonus.attemptsUsed === 1 && st.score === 20 &&
           st.bonus.tried.join(",") === order.join(",") &&
           $("bonus-verdict").textContent === "No match - try again." && verdictHidden &&
           $("bonus-attempts").textContent.indexOf("2") > -1 &&
@@ -544,8 +544,8 @@
       rec("f3. a miss with nothing right clears at once, and the third settles at 1 point",
         stillOpen && clearedAtOnce && verdictBefore === "No match - try again." &&
           done.bonus.resolved === true && done.bonus.matched === false && done.bonus.attemptsUsed === 3 &&
-          done.bonus.tried.join(",") === finalOrder.join(",") && done.answers[1].points === 1 &&
-          done.score === 12 && $("bonus-verdict").classList.contains("sr-only") &&
+          done.bonus.tried.join(",") === finalOrder.join(",") && done.answers[1].points === 5 &&
+          done.score === 20 && $("bonus-verdict").classList.contains("sr-only") &&
           $("bonus-verdict").textContent === "No match: 1 of 4 positions right.",
         "stillOpen=" + stillOpen + " clearedAtOnce=" + clearedAtOnce + " verdictBefore='" + verdictBefore +
           "' attempts=" + done.bonus.attemptsUsed + " tried=" + done.bonus.tried.join(",") +
@@ -668,14 +668,14 @@
       answerWrong();
     }
     await wait(60);
-    step("8. zero-correct finish shows 0 / 110, time, timestamp and 10 review rows", function () {
+    step("8. zero-correct finish shows 0 / 150, time, timestamp and 10 review rows", function () {
       var st = app().getState();
       var score = $("results-score").textContent;
       var time = $("results-time").textContent;
       var fin = $("results-finished").textContent;
       var rows = $("results-review").children.length;
-      rec("8. zero-correct finish shows 0 / 110, a total time, a finish timestamp and 10 review rows",
-        app().getView() === "results" && st.score === 0 && score === "0 / 110" &&
+      rec("8. zero-correct finish shows 0 / 150, a total time, a finish timestamp and 10 review rows",
+        app().getView() === "results" && st.score === 0 && score === "0 / 150" &&
           time.indexOf("Total time: ") === 0 && fin.indexOf("Finished at") === 0 && rows === 10 &&
           hud() === "Total Points: 0 - Question 10/10",
         "view=" + app().getView() + " score='" + score + "' time='" + time + "' finished='" + fin +
@@ -691,9 +691,9 @@
       var fin = $("welcome-back-finished").textContent;
       click($("btn-continue"));
       rec("8b. reload after finishing: the card shows the final score with the elapsed and finish time",
-        prog.indexOf("Finished - score 0 / 110") === 0 && summaryShown &&
+        prog.indexOf("Finished - score 0 / 150") === 0 && summaryShown &&
           time.indexOf("Total time: ") === 0 && fin.indexOf("Finished at") === 0 &&
-          app().getView() === "results" && $("results-score").textContent === "0 / 110",
+          app().getView() === "results" && $("results-score").textContent === "0 / 150",
         "card said '" + prog + "' summaryShown=" + summaryShown + " time='" + time + "' finished='" + fin +
           "' → view=" + app().getView() + " score=" + $("results-score").textContent);
     });

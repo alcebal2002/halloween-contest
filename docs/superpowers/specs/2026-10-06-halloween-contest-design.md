@@ -38,7 +38,7 @@ The UI is a single page with five screen sections. One of them is visible at a t
 | `nickname` | Welcome | Title **"Halloween Contest"**, tagline, nickname input, **Start** button |
 | `welcomeBack` | Resume | "Welcome back, *nickname*", progress line ("Question 4 of 10", or "Finished - score X / M" when the stored phase is `results`). In that finished case the card also shows the run's elapsed time and finish time, then a blank gap, then **Continue** / **Start over**. **Continue** returns to the stored phase (`question`, `feedback`, or `results`) |
 | `question` | Quiz | Progress header, question text, three option buttons |
-| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green (the outcome is announced to screen readers via a visually hidden "Correct!" / "Not quite — correct answer: …" line; nothing is shown on screen), a correct answer flashes its **+1** in the middle of the screen (§10.3), **Next** button |
+| `feedback` | Quiz (locked) | Chosen option green/red, correct option always shown green (the outcome is announced to screen readers via a visually hidden "Correct!" / "Not quite — correct answer: …" line; nothing is shown on screen), a correct answer flashes its **+5** in the middle of the screen (§10.3), **Next** button |
 | `results` | Summary | Nickname, score `X / M`, finish timestamp, full answer review, **Play again** |
 
 Transition rules:
@@ -245,13 +245,13 @@ the current contract wherever the two disagree.
 
 | Outcome | Points for the question |
 |---|---|
-| Correct, matched the bottle order on the 1st attempt | **11** (1 + a 10-point bonus) |
-| Correct, matched on the 2nd attempt | **6** (1 + a 5-point bonus) |
-| Correct, matched on the 3rd attempt | **4** (1 + a 3-point bonus) |
-| Correct, no match after 3 attempts | **1** |
+| Correct, matched the bottle order on the 1st attempt | **15** (5 + a 10-point bonus) |
+| Correct, matched on the 2nd attempt | **10** (5 + a 5-point bonus) |
+| Correct, matched on the 3rd attempt | **8** (5 + a 3-point bonus) |
+| Correct, no match after 3 attempts | **5** |
 | Wrong answer | **0** |
 
-Maximum **110 points** (10 questions × 11). Internally a correct answer pays 1 point at answer
+Maximum **150 points** (10 questions × 15). Internally a correct answer pays 5 points at answer
 time and the resolved bonus adds the remainder (10 / 5 / 3 / 0), so `score` is always the sum of
 `answers[].points` — that equality is enforced by `validateStoredState`.
 
@@ -278,7 +278,7 @@ shown beneath them: the verdict line stays screen-reader-only and announces how 
 were right.
 
 A settled points award flashes in the middle of the screen: a large `+10` / `+5` / `+3` for a
-matched bonus, or `+1` for a correct answer (a **wrong** answer pays nothing and so flashes
+matched bonus, or `+5` for a correct answer (a **wrong** answer pays nothing and so flashes
 nothing). It is the `+` and the points, fading in and out over two seconds. `#points-flash` is
 fixed and viewport-centred and purely decorative (`aria-hidden`); the verdict line carries the
 same points to screen readers. Under `prefers-reduced-motion` the award still appears but without
@@ -333,7 +333,7 @@ the sum of the recorded points.
 validation, the per-position `matchPositions` helper, elapsed-time accumulation and the gap cap,
 plus everything in §8.
 `tests/app-check.html` (44 checks) drives the real page through instructions, HUD, immediate
-feedback (with the "+1" a correct answer flashes, and nothing on a wrong one), both bonus
+feedback (with the "+5" a correct answer flashes, and nothing on a wrong one), both bonus
 outcomes (the neon match highlight, the big centred "+10 / +5 / +3" award flash, the green flash
 on a partial match and the empty slots it
 leaves — including after a reload — and the settled miss that reveals the order with each slot
@@ -342,3 +342,8 @@ marked green (right) or neon red (wrong)), resume from every phase, and the resu
 checks) repeats the 360px overflow assertion at every step of the flow and asserts a clear
 gap above the action buttons on the feedback and bonus screens.
 `tests/make-nostorage.js` regenerates the `localStorage`-blocked copy of `index.html`.
+
+> **Change 2026-10-21:** the base points for a correct answer were raised from 1 to 5
+> (`BONUS_BASE_POINTS = 5`, `BONUS_MISS_POINTS` follows it). Question totals are now
+> 15 / 10 / 8 / 5 / 0, the maximum is 150, and the centred award flashes `+5` for a correct
+> answer. `results-api.js` counts a matched bonus as a correct answer with `points > 5`.

@@ -127,7 +127,7 @@
       click($("btn-bonus-check"));
       await wait(50);
       checkScreen("bonus (resolved)", "bonus");
-      rec("bonus: a first-attempt match pays 11", app().getState().score === 11, app().getState().score);
+      rec("bonus: a first-attempt match pays 15", app().getState().score === 15, app().getState().score);
 
       click($("btn-bonus-next"));
       await wait(50);
@@ -140,7 +140,7 @@
       }
       checkScreen("results", "results");
       rec("results: total points, time and timestamp are all rendered",
-        $("results-score").textContent === "11 / 110" &&
+        $("results-score").textContent === "15 / 150" &&
           $("results-time").textContent.indexOf("Total time: ") === 0 &&
           $("results-finished").textContent.indexOf("Finished at") === 0 &&
           D().getElementById("results-review").children.length === 10,

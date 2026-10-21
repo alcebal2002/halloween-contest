@@ -141,11 +141,11 @@ Exposed as `window.ResultsApi` in the browser and `module.exports` in Node.
 | `nickname` | `state.nickname` |
 | `total_score` | `state.score` |
 | `correct_count` | answers where `correct` is true |
-| `bonuses_matched` | **correct** answers whose `points > 1` — the bonus pays 5, 3 or 2 for a matched bonus, 1 for a correct answer whose bonus was missed, 0 for a wrong answer. The `correct` test is enforced rather than assumed, so a tampered state carrying points on a wrong answer still yields a row the `bonuses_within_correctes` constraint accepts. |
+| `bonuses_matched` | **correct** answers whose `points > 5` — a question pays 15, 10 or 8 for a matched bonus, 5 for a correct answer whose bonus was missed, 0 for a wrong answer. The `correct` test is enforced rather than assumed, so a tampered state carrying points on a wrong answer still yields a row the `bonuses_within_correctes` constraint accepts. |
 | `elapsed_ms` | `Math.max(0, Math.round(state.elapsedMs))` |
 | `finished_at` | `state.finishedAt` (ISO 8601 string) |
 
-For an answer record with no `points` field, the value is treated as `correct ? 1 : 0`, mirroring
+For an answer record with no `points` field, the value is treated as `correct ? 5 : 0`, mirroring
 the backfill already performed by `validateStoredState`, so `bonuses_matched` stays correct.
 
 `buildResultRow` returns `null` when `state.finishedAt` is missing or `state.answers` is empty —
@@ -234,7 +234,7 @@ spacing above the retry button.
 **Unit (`tests/test-suite.js`, runs under `node tests/run-tests.js` and in `tests/test.html`):**
 `isConfigured` rejects a blank key, a short key and a `PASTE…` placeholder, and accepts a real
 shaped key; `buildResultRow` maps a full finished state including `bonuses_matched` for a mix of
-5/3/2/1/0 point answers, backfills a missing `points` field, and returns `null` for an unfinished
+15/10/8/5/0 point answers, backfills a missing `points` field, and returns `null` for an unfinished
 state; `classifySaveError` returns `duplicate` for `409` and for a `23505` body and `failed` for
 `500` and for a network throw; `saveResult` sends the expected headers, omits any upsert header,
 and resolves `saved`, `duplicate` and `failed` from a stubbed `fetch`.

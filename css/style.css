@@ -235,7 +235,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .verdict.is-warn { color: var(--orange); }
 
 /* The points award flashes centred while an answer settles (spec §10.3): a big
-   "+10" / "+5" / "+3" for a matched bonus, or "+1" for a correct answer, that
+   "+10" / "+5" / "+3" for a matched bonus, or "+5" for a correct answer, that
    fades in and out over a couple of seconds. Decorative — the verdict line
    announces the same points. */
 .points-flash {
