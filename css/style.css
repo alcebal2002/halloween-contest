@@ -531,6 +531,12 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .lb-table tr.is-rank-1 td.lb-rank,
 .lb-table tr.is-rank-2 td.lb-rank,
 .lb-table tr.is-rank-3 td.lb-rank { color: #ffffff; }
+/* A top-three row whose standing just changed blinks for 3 seconds. */
+@keyframes lb-blink {
+  0%, 100% { background: #701a75; }
+  50% { background: #ff7a1a; color: #1a0e05; }
+}
+.lb-table tr.is-changed td { animation: lb-blink 0.5s ease-in-out 6; }
 .lb-table tr.is-skeleton td {
   height: 18px;
   background: linear-gradient(90deg, rgba(168, 159, 145, 0.10), rgba(168, 159, 145, 0.04));

@@ -91,8 +91,19 @@
     return (typeof row.nickname === "string") ? row.nickname : String(row.nickname || "");
   }
 
+  function podiumKey(row) {
+    return [displayName(row), num(row.total_score), num(row.correct_count),
+            num(row.elapsed_ms), row.finished_at || ""].join("|");
+  }
+
+  // What the top three ranks showed on the previous render. Null until the
+  // first rows are drawn, so opening the page never blinks.
+  var lastPodium = null;
+
   function writeRows(doc, body, rows) {
     body.textContent = "";
+    var prev = lastPodium;
+    var podiumNow = [];
     var rank = 0;
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
@@ -103,7 +114,15 @@
       // highlight it without the renderer knowing any colours.
       var podium = (!isRepeat && rank <= 3) ? " is-rank-" + rank : "";
       var tr = doc.createElement("tr");
-      tr.className = "lb-row" + (isRepeat ? " is-repeat" : "") + podium;
+      // A top-three rank whose content differs from the last render blinks
+      // (pure CSS animation, about 3 seconds) so the room notices the change.
+      var changed = "";
+      if (podium) {
+        var key = podiumKey(row);
+        podiumNow[rank - 1] = key;
+        if (prev && prev[rank - 1] !== key) changed = " is-changed";
+      }
+      tr.className = "lb-row" + (isRepeat ? " is-repeat" : "") + podium + changed;
       tr.appendChild(cell(doc, isRepeat ? "" : String(rank), "#", "lb-rank"));
       tr.appendChild(cell(doc, displayName(row), "Player", "lb-player"));
       tr.appendChild(cell(doc, scoreText(row), "Score", ""));
@@ -111,6 +130,7 @@
       tr.appendChild(cell(doc, GL.formatTimestamp(row.finished_at), "Finished", ""));
       body.appendChild(tr);
     }
+    lastPodium = podiumNow;
   }
 
   function writeSkeleton(doc, body) {
