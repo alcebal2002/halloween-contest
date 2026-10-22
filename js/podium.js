@@ -182,8 +182,119 @@
     });
   }
 
+  // Synthesised applause (Web Audio, no asset), ~5s: hundreds of short noise
+  // "claps" scattered at random, swelling in, holding, then thinning out.
+  function applauseBuffer(ctx, dur) {
+    var rate = ctx.sampleRate;
+    var len = Math.floor(rate * dur);
+    var buf = ctx.createBuffer(2, len, rate);
+    for (var ch = 0; ch < 2; ch++) {
+      var data = buf.getChannelData(ch);
+      for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * 0.02;
+      var claps = Math.floor(dur * 90);
+      for (var c = 0; c < claps; c++) {
+        var at = Math.random() * dur;
+        // Fewer claps near the very start and the tail.
+        var shape = Math.min(1, at / 0.6) * Math.min(1, (dur - at) / 1.8);
+        if (Math.random() > shape) continue;
+        var start = Math.floor(at * rate);
+        var clapLen = Math.floor(rate * (0.008 + Math.random() * 0.012));
+        var amp = 0.15 + Math.random() * 0.35;
+        for (var k = 0; k < clapLen && start + k < len; k++) {
+          data[start + k] += (Math.random() * 2 - 1) * amp * Math.exp(-k / (clapLen / 4));
+        }
+      }
+    }
+    return buf;
+  }
+
+  function playApplause(ctx) {
+    try {
+      var t = ctx.currentTime;
+      var dur = 5;
+      var src = ctx.createBufferSource();
+      src.buffer = applauseBuffer(ctx, dur);
+      var tone = ctx.createBiquadFilter();
+      tone.type = "highpass";
+      tone.frequency.value = 500;
+      tone.Q.value = 0.5;
+      var gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(1.6, t + 0.5);
+      gain.gain.setValueAtTime(1.6, t + 3.2);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(tone);
+      tone.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(t);
+      src.stop(t + dur);
+    } catch (e) { /* sound is decoration; never break the podium */ }
+  }
+
+  // Plays once when the podium appears. Browsers usually block audio on a
+  // freshly opened page, so if it can't start now it plays on the first
+  // click or key press instead.
+  // A visible button appears when the browser blocks the sound, so it is
+  // obvious that one click is needed.
+  var sound = { ctx: null, wanted: false, played: false, btn: null };
+
+  function audioCtor() {
+    var root = typeof globalThis !== "undefined" ? globalThis : this;
+    return root && (root.AudioContext || root.webkitAudioContext);
+  }
+
+  function tryPlay() {
+    if (!sound.wanted || sound.played || !sound.ctx || sound.ctx.state !== "running") return;
+    sound.played = true;
+    if (sound.btn && sound.btn.parentNode) sound.btn.parentNode.removeChild(sound.btn);
+    playApplause(sound.ctx);
+  }
+
+  // Called inside a click/key handler: creating or resuming the context
+  // there is what browsers accept as permission to play.
+  function unlock() {
+    var AC = audioCtor();
+    if (!AC) return;
+    try {
+      if (!sound.ctx) sound.ctx = new AC();
+      var p = sound.ctx.resume ? sound.ctx.resume() : null;
+      Promise.resolve(p).then(tryPlay, function () {});
+      tryPlay();
+    } catch (e) { /* no sound available */ }
+  }
+
+  function listenForUnlock(doc) {
+    if (!doc || !doc.addEventListener || !audioCtor()) return;
+    doc.addEventListener("pointerdown", unlock);
+    doc.addEventListener("keydown", unlock);
+    try { sound.ctx = new (audioCtor())(); } catch (e) { sound.ctx = null; }
+  }
+
+  function showSoundButton(doc) {
+    if (sound.played || sound.btn || !doc.body) return;
+    var b = doc.createElement("button");
+    b.type = "button";
+    b.className = "btn sound-btn";
+    b.textContent = "🔊 Play applause";
+    b.addEventListener("click", unlock);
+    doc.body.appendChild(b);
+    sound.btn = b;
+  }
+
+  function cheer(doc) {
+    if (!audioCtor()) return;
+    sound.wanted = true;
+    tryPlay();
+    if (sound.played) return;
+    if (sound.ctx && sound.ctx.resume) {
+      Promise.resolve(sound.ctx.resume()).then(tryPlay, function () {});
+    }
+    setTimeout(function () { if (!sound.played) showSoundButton(doc); }, 400);
+  }
+
   function boot(doc, api, config) {
     if (!doc || !api) return null;
+    listenForUnlock(doc);
     render(doc, { state: "loading", status: "Loading…" });
     render(doc, { state: "loading", status: "" }, BOTTOM_IDS);
 
@@ -197,6 +308,7 @@
     // The initial (and only) queries, one per stand, so either can fail alone.
     // The bottom stand waits for the top one so it can skip its names.
     loadWith(doc, api, config).then(function (res) {
+      if (res && res.ok && topThree(res.rows).length) cheer(doc);
       var top = (res && res.ok) ? topThree(res.rows).map(displayName) : [];
       return loadBottomWith(doc, api, config, top);
     });
