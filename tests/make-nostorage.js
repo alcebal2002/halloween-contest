@@ -41,6 +41,7 @@ var DRIVER = [
   "  out.push(\"bannerVisibleAfterBoot=\" + !banner.hidden);",
   "",
   "  document.getElementById(\"nickname\").value = \"NoSave\";",
+  "    document.getElementById(\"gft-id\").value = \"AB12\";",
   "  document.getElementById(\"btn-start\").click();",
   "  out.push(\"viewAfterStart=\" + HalloweenApp.getView());",
   "  out.push(\"instructionsShown=\" + !document.getElementById(\"screen-instructions\").hidden);",
@@ -105,8 +106,8 @@ html = html
   // The key ships in its own file, so the copy cannot rewrite it. Blank it
   // immediately after that file loads, before app.js can reach the results
   // screen and post a real row. Runs after the path rewrite above.
-  .replace("<script src=\"/js/supabase-config.js\"></script>",
-    "<script src=\"/js/supabase-config.js\"></script>\n<script>window.SUPABASE_CONFIG.anonKey = \"\";</script>")
+  .replace(/<script src="\/js\/supabase-config\.js(?:\?[^"]*)?"><\/script>/,
+    function (script) { return script + "\n<script>window.SUPABASE_CONFIG.anonKey = \"\";</script>"; })
   .replace("<body>\n", "<body>\n" + STUB)
   .replace("</body>", DRIVER + "</body>");
 

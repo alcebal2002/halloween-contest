@@ -51,9 +51,73 @@
 
   function wrongIndex(q) { return (q.correctIndex + 1) % 3; }
 
+  test("GFT ID requires exactly four ASCII letters or digits and keeps case", function () {
+    ["", " ", "ABC", "ABCDE", "A-12", "AB 1", "AB_1", "ab\u00e91", null, 1234].forEach(function (id) {
+      assertEqual(GL.validateGftId(id).ok, false, "reject " + JSON.stringify(id));
+    });
+    ["abcd", "1234", "aB12", " AB12 "].forEach(function (id) {
+      var result = GL.validateGftId(id);
+      assertEqual(result.ok, true);
+      assertEqual(result.gftId, id.trim());
+    });
+  });
+
+  test("GFT ID survives local storage and replay; legacy or invalid IDs cannot resume", function () {
+    var pool = makePool(12);
+    var state = GL.createInitialState("Bat", pool, { gftId: "aB12" });
+    var storage = fakeStorage();
+    GL.saveState(storage, state);
+    var loaded = GL.loadState(storage, pool);
+    assertEqual(loaded.gftId, "aB12");
+    var replay = GL.createInitialState(loaded.nickname, pool, { gftId: loaded.gftId });
+    assertEqual(replay.gftId, "aB12");
+    assert(replay.sessionId !== state.sessionId);
+    delete state.gftId;
+    assertEqual(GL.validateStoredState(state, pool), null, "legacy ID must be collected");
+    state.gftId = "A-12";
+    assertEqual(GL.validateStoredState(state, pool), null);
+  });
+
+  test("player labels include the ID without inventing one for historical results", function () {
+    assertEqual(LB.displayName({ nickname: "Bat", gft_id: "aB12" }), "Bat [AB12]");
+    assertEqual(LB.displayName({ nickname: "Bat", gft_id: null }), "Bat");
+  });
+
+  test("standings group repeat runs by nickname and GFT ID, not nickname alone", function () {
+    var first = { nickname: "Bat", gft_id: "AB12", total_score: 100 };
+    var second = { nickname: "Bat", gft_id: "CD34", total_score: 90 };
+    var repeat = { nickname: "Bat", gft_id: "ab12", total_score: 80 };
+    var rows = [first, second, repeat];
+    var ranked = LB.rankRows(rows);
+    assertEqual(ranked.length, 3);
+    assertEqual(ranked[1].repeat, true);
+    assertEqual(ranked[2].gft_id, "CD34");
+    assertEqual(ranked[2].repeat, false);
+    assertEqual(PODIUM.topThree(rows).length, 2);
+    var bottom = PODIUM.bottomThree(rows, [first]);
+    assertEqual(bottom.length, 1, "exclude only the matching identity");
+    assertEqual(bottom[0].gft_id, "CD34");
+  });
+
+  test("claimNickname rejects invalid IDs without making a request", function () {
+    return RA.claimNickname(saveConfig(), "Bat", "A-12", function () {
+      throw new Error("must not send invalid ID");
+    }).then(function (res) {
+      assertEqual(res.kind, "failed");
+      assert(res.detail.indexOf("GFT ID") !== -1);
+    });
+  });
+
+  test("result mapping requires a valid GFT ID and sends it as typed", function () {
+    assertEqual(RA.buildResultRow(finishedState({ gftId: undefined })), null);
+    assertEqual(RA.buildResultRow(finishedState({ gftId: "A-12" })), null);
+    assertEqual(RA.buildResultRow(finishedState({ gftId: "aB12" })).gft_id, "aB12");
+  });
+
   // A contest that is ready to play (nickname captured, instructions passed).
   function buildContest(GL_, pool, nickname, options) {
     var opts = options || {};
+    opts.gftId = opts.gftId || "AB12";
     opts.rng = seededRandom(7);
     var fresh = GL_.createInitialState(nickname, pool, opts);
     var state = GL_.beginPlay(fresh, opts.now);
@@ -591,7 +655,7 @@
     var pool = makePool(25);
     assertEqual(GL.validateStoredState(null, pool), null);
     assertEqual(GL.validateStoredState({ phase: "question" }, pool), null);
-    var good = GL.createInitialState("Hero", pool, { rng: seededRandom(3) });
+    var good = GL.createInitialState("Hero", pool, { rng: seededRandom(3), gftId: "AB12" });
     var badPhase = Object.assign({}, good, { phase: "sideways" });
     assertEqual(GL.validateStoredState(badPhase, pool), null);
     var badIndex = Object.assign({}, Object.assign({}, good, { phase: "question" }), { questionIndex: 999 });
@@ -705,7 +769,7 @@
   });
 
   test("saveState returns false when setItem throws and true otherwise", function () {
-    var state = GL.createInitialState("Hero", makePool(25), { rng: seededRandom(5) });
+    var state = GL.createInitialState("Hero", makePool(25), { rng: seededRandom(5), gftId: "AB12" });
     assertEqual(GL.saveState(fakeStorage(true), state), false);
     var ok = fakeStorage(false);
     assertEqual(GL.saveState(ok, state), true);
@@ -784,7 +848,7 @@
 
   test("a stored instructions phase resumes on the instructions screen", function () {
     var pool = makePool(25);
-    var fresh = GL.createInitialState("Hero", pool, { rng: seededRandom(11) });
+    var fresh = GL.createInitialState("Hero", pool, { rng: seededRandom(11), gftId: "AB12" });
     var restored = GL.validateStoredState(JSON.parse(JSON.stringify(fresh)), pool);
     assert(restored !== null, "fresh state rejected");
     assertEqual(restored.phase, "instructions");
@@ -952,6 +1016,7 @@
   function finishedState(overrides) {
     var base = {
       sessionId: "hc_abc-123",
+      gftId: "AB12",
       nickname: "Bat",
       score: 48,
       elapsedMs: 91234.6,
@@ -970,16 +1035,17 @@
     return base;
   }
 
-  test("buildResultRow maps a finished state to the seven stored columns", function () {
+  test("buildResultRow maps a finished state to the eight stored columns", function () {
     var row = RA.buildResultRow(finishedState());
     assertEqual(row.session_id, "hc_abc-123", "session_id");
     assertEqual(row.nickname, "Bat", "nickname");
+    assertEqual(row.gft_id, "AB12", "gft_id");
     assertEqual(row.total_score, 48, "total_score");
     assertEqual(row.correct_count, 4, "correct_count counts every correct answer");
     assertEqual(row.bonuses_matched, 3, "bonuses_matched counts points > 5 only");
     assertEqual(row.elapsed_ms, 91235, "elapsed_ms is rounded to whole ms");
     assertEqual(row.finished_at, "2026-10-13T12:00:00.000Z", "finished_at passes through unchanged");
-    assertEqual(Object.keys(row).length, 7, "no extra columns are invented");
+    assertEqual(Object.keys(row).length, 8, "no extra columns are invented");
   });
 
   test("buildResultRow backfills a missing points field the way game-logic does", function () {
@@ -1102,7 +1168,7 @@
       assertEqual(res.rows.length, 0, "an empty board is still a load");
       assertEqual(seen.url,
         "https://lyzuxvcsjavxhlovgeeu.supabase.co/rest/v1/contest_results" +
-        "?select=session_id,nickname,total_score,correct_count,bonuses_matched,elapsed_ms,finished_at" +
+        "?select=session_id,nickname,gft_id,total_score,correct_count,bonuses_matched,elapsed_ms,finished_at" +
         "&order=total_score.desc,correct_count.desc,elapsed_ms.asc,created_at.asc&limit=500", "windowed, score-descending endpoint");
       assertEqual(seen.opts.method, "GET", "method");
       assertEqual(seen.opts.headers["apikey"], saveConfig().anonKey, "apikey header");
@@ -1183,13 +1249,13 @@
 
   /* ---- Supabase nicknames: claiming the row ---- */
 
-  test("claimNickname posts the nickname with the publishable key and no extra column", function () {
+  test("claimNickname posts the identity with the publishable key and no generated column", function () {
     var seen = {};
     var fetchImpl = function (url, opts) {
       seen.url = url; seen.opts = opts;
       return Promise.resolve(jsonResponse(201, {}));
     };
-    return RA.claimNickname(saveConfig(), "Bat", fetchImpl).then(function (res) {
+    return RA.claimNickname(saveConfig(), "Bat", "ab12", fetchImpl).then(function (res) {
       assertEqual(res.ok, true, "a 201 claims the name");
       assertEqual(res.kind, "claimed", "kind");
       assertEqual(seen.url, "https://lyzuxvcsjavxhlovgeeu.supabase.co/rest/v1/nicknames", "endpoint");
@@ -1199,7 +1265,8 @@
       assertEqual(seen.opts.headers["Prefer"], "return=minimal", "minimal representation");
       var body = JSON.parse(seen.opts.body);
       assertEqual(body.nickname, "Bat", "body carries the nickname");
-      assertEqual(Object.keys(body).length, 1,
+      assertEqual(body.gft_id, "ab12", "body carries the GFT ID as typed");
+      assertEqual(Object.keys(body).length, 2,
         "the lowercase uniqueness column is generated by the database, never sent");
     });
   });
@@ -1212,7 +1279,7 @@
         details: "Key (nickname_lower)=(bat) already exists.", hint: null
       }));
     };
-    return RA.claimNickname(saveConfig(), "Bat", fetchImpl).then(function (res) {
+    return RA.claimNickname(saveConfig(), "Bat", "AB12", fetchImpl).then(function (res) {
       assertEqual(res.ok, false, "an existing name is not a claim");
       assertEqual(res.kind, "duplicate", "kind");
     });
@@ -1220,7 +1287,7 @@
 
   test("claimNickname resolves failed when fetch rejects", function () {
     var fetchImpl = function () { return Promise.reject(new TypeError("Failed to fetch")); };
-    return RA.claimNickname(saveConfig(), "Bat", fetchImpl).then(function (res) {
+    return RA.claimNickname(saveConfig(), "Bat", "AB12", fetchImpl).then(function (res) {
       assertEqual(res.ok, false, "a rejected request is not a claim");
       assertEqual(res.kind, "failed", "kind");
       assert(res.detail.length > 0, "the detail should say what happened");
@@ -1231,7 +1298,7 @@
     var calls = 0;
     var fetchImpl = function () { calls++; return Promise.resolve(jsonResponse(201, {})); };
     var bad = { url: "https://example.supabase.co", anonKey: "PASTE_YOUR_KEY_HERE" };
-    return RA.claimNickname(bad, "Bat", fetchImpl).then(function (res) {
+    return RA.claimNickname(bad, "Bat", "AB12", fetchImpl).then(function (res) {
       assertEqual(res.ok, false, "not a claim");
       assertEqual(res.kind, "unconfigured", "kind");
       assertEqual(calls, 0, "an unconfigured config must never reach the network");
@@ -1243,7 +1310,7 @@
     var threw = null;
     var result = null;
     try {
-      result = RA.claimNickname(null, "Bat", fetchImpl);
+      result = RA.claimNickname(null, "Bat", "AB12", fetchImpl);
     } catch (e) {
       threw = e;
     }
@@ -1256,7 +1323,7 @@
 
   test("claimNickname times out a request that never settles", function () {
     var hanging = function () { return new Promise(function () { /* never settles */ }); };
-    return RA.claimNickname(saveConfig(), "Bat", hanging, 30).then(function (res) {
+    return RA.claimNickname(saveConfig(), "Bat", "AB12", hanging, 30).then(function (res) {
       assertEqual(res.ok, false, "a hung request is not a claim");
       assertEqual(res.kind, "failed", "kind");
       assert(res.detail.indexOf("timed out") !== -1, "detail names the timeout: " + res.detail);
@@ -1517,9 +1584,9 @@
           return h === "Content-Range" ? "*/" + total : null; } } });
       }
       if (url.indexOf("total_score.desc") !== -1) {
-        return Promise.resolve(jsonResponse(200, o.empty ? [] : [{ nickname: "Bat", total_score: 33 }]));
+        return Promise.resolve(jsonResponse(200, o.empty ? [] : [{ nickname: "Bat", gft_id: "AB12", total_score: 33 }]));
       }
-      return Promise.resolve(jsonResponse(200, o.empty ? [] : [{ nickname: "Owl", elapsed_ms: 61500 }]));
+      return Promise.resolve(jsonResponse(200, o.empty ? [] : [{ nickname: "Owl", gft_id: "CD34", elapsed_ms: 61500 }]));
     };
     return { impl: impl, calls: calls };
   }
@@ -1532,6 +1599,9 @@
       assertEqual(res.contests.value, 17, "contest count from Content-Range");
       assertEqual(res.maxScore.row.total_score, 33, "max score row");
       assertEqual(res.minTime.row.elapsed_ms, 61500, "min time row");
+      assert(f.calls.filter(function (c) { return c.opts.method === "GET"; }).every(function (c) {
+        return c.url.indexOf("select=nickname,gft_id,") !== -1;
+      }), "both holder queries include GFT ID");
       var heads = f.calls.filter(function (c) { return c.opts.method === "HEAD"; });
       assertEqual(heads.length, 2, "two count requests");
       assertEqual(heads[0].opts.headers["Prefer"], "count=exact", "exact count requested");
@@ -1568,9 +1638,9 @@
       var v = CTL.tiles(res);
       assertEqual(v.nicknames.value, "42", "count");
       assertEqual(v.maxScore.value, "33", "score");
-      assertEqual(v.maxScore.sub, "by Bat", "score holder");
+      assertEqual(v.maxScore.sub, "by Bat [AB12]", "score holder");
       assertEqual(v.minTime.value, GL.formatDuration(61500), "time uses the leaderboard format");
-      assertEqual(v.minTime.sub, "by Owl", "time holder");
+      assertEqual(v.minTime.sub, "by Owl [CD34]", "time holder");
       return RA.fetchDashboardStats(saveConfig(), dashFetch({ empty: true, nickStatus: 503 }).impl);
     }).then(function (res) {
       var v = CTL.tiles(res);

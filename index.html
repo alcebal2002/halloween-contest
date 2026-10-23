@@ -52,11 +52,16 @@
 
   <section id="screen-nickname" class="screen">
     <div class="field">
+      <label for="gft-id">GFT ID</label>
+      <input id="gft-id" type="text" required minlength="4" maxlength="4" pattern="[A-Za-z0-9]{4}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. AB12" aria-describedby="gft-id-error">
+      <p id="gft-id-error" class="field-error" role="alert" hidden></p>
+    </div>
+    <div class="field">
       <label for="nickname">Nickname</label>
-      <input id="nickname" type="text" maxlength="20" autocomplete="off" placeholder="e.g. GhostRider">
+      <input id="nickname" type="text" required maxlength="20" autocomplete="off" placeholder="e.g. GhostRider">
       <p id="nickname-error" class="field-error" role="alert" hidden></p>
       <p id="nickname-note" class="field-note" hidden>The question set changed &mdash; starting over.</p>
-      <p id="nickname-checking" class="field-note" hidden>Checking that nickname&hellip;</p>
+      <p id="nickname-checking" class="field-note" hidden>Checking that GFT ID and nickname&hellip;</p>
       <p id="nickname-duplicate" class="field-error" role="alert" hidden></p>
     </div>
     <button id="btn-start" class="btn btn-primary" type="button">Start</button>
@@ -177,9 +182,9 @@
 <footer class="page-foot">Happy Halloween 🕸️</footer>
 
 <script src="js/questions.js?v=2"></script>
-<script src="js/game-logic.js?v=2"></script>
+<script src="js/game-logic.js?v=5"></script>
 <script src="js/supabase-config.js?v=2"></script>
-<script src="js/results-api.js?v=2"></script>
-<script src="js/app.js?v=2"></script>
+<script src="js/results-api.js?v=5"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>

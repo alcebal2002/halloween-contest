@@ -117,6 +117,19 @@ function validateNickname(raw) {
   return { ok: true, nickname: nickname };
 }
 
+function validateGftId(raw) {
+  var id = typeof raw === "string" ? raw.trim() : "";
+  if (!/^[A-Za-z0-9]{4}$/.test(id)) {
+    return { ok: false, reason: "Enter a GFT ID containing exactly 4 letters or digits." };
+  }
+  return { ok: true, gftId: id };
+}
+
+function formatPlayerName(nickname, gftId) {
+  var name = String(nickname || "");
+  return gftId ? name + " [" + String(gftId) + "]" : name;
+}
+
 function createNewSessionId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return "hc_" + crypto.randomUUID();
@@ -152,6 +165,7 @@ function createInitialState(nickname, pool, options) {
   return {
     sessionId: opts.sessionId || createNewSessionId(),
     nickname: nickname,
+    gftId: opts.gftId,
     phase: "instructions",
     questionIndex: 0,
     questionOrder: selectQuestions(pool, opts.rng).map(function (q) { return q.id; }),
@@ -383,6 +397,8 @@ function validateStoredState(raw, pool) {
   if (typeof raw.sessionId !== "string" || raw.sessionId === "") return null;
   var nickname = validateNickname(raw.nickname);
   if (!nickname.ok) return null;
+  var gftId = validateGftId(raw.gftId);
+  if (!gftId.ok) return null;
   if (VALID_PHASES.indexOf(raw.phase) === -1) return null;
   if (!Array.isArray(raw.answers) || !Array.isArray(raw.questionOrder)) return null;
   if (!Number.isInteger(raw.score) || raw.score < 0) return null;
@@ -424,6 +440,7 @@ function validateStoredState(raw, pool) {
   var state = {
     sessionId: raw.sessionId,
     nickname: nickname.nickname,
+    gftId: gftId.gftId,
     phase: raw.phase,
     questionIndex: raw.questionIndex,
     questionOrder: raw.questionOrder.slice(),
@@ -496,6 +513,8 @@ var GameLogic = {
   shuffle: shuffle,
   selectQuestions: selectQuestions,
   validateNickname: validateNickname,
+  validateGftId: validateGftId,
+  formatPlayerName: formatPlayerName,
   createNewSessionId: createNewSessionId,
   createInitialState: createInitialState,
   beginPlay: beginPlay,

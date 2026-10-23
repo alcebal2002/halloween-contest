@@ -10,14 +10,14 @@
 
   var REFRESH_MS = 10000;
   var TOP_NAMES = 10;
-  var COLUMNS = ["#", "Player", "Score", "Time", "Finished"];
+  var COLUMNS = ["#", "Player", "GFT ID", "Score", "Time", "Finished"];
 
   // Pure ranking over a stream the server already ordered by
   // total_score desc, created_at asc.
   //
   // 1. blank nicknames are dropped — otherwise they would all group into one
   //    phantom "" player and claim a rank nobody earned;
-  // 2. rows are grouped by nickname in arrival order, so the first row seen
+  // 2. rows are grouped by nickname + GFT ID in arrival order, so the first row seen
   //    for a name is that name's best score;
   // 3. only the first `limit` distinct names are kept;
   // 4. each kept name emits its best row first (repeat:false), then its other
@@ -39,8 +39,9 @@
         ? row.nickname.replace(/^\s+|\s+$/g, "")
         : "";
       if (name === "") continue;
-      if (!groups[name]) { groups[name] = []; order.push(name); }
-      groups[name].push(row);
+      var identity = playerKey(row);
+      if (!groups[identity]) { groups[identity] = []; order.push(identity); }
+      groups[identity].push(row);
     }
 
     var out = [];
@@ -88,7 +89,11 @@
 
   function displayName(row) {
     if (!row) return "";
-    return (typeof row.nickname === "string") ? row.nickname : String(row.nickname || "");
+    return GL.formatPlayerName(row.nickname, row.gft_id ? String(row.gft_id).toUpperCase() : row.gft_id);
+  }
+
+  function playerKey(row) {
+    return JSON.stringify([String(row.nickname || "").trim(), String(row.gft_id || "").toLowerCase()]);
   }
 
   function podiumKey(row) {
@@ -124,7 +129,8 @@
       }
       tr.className = "lb-row" + (isRepeat ? " is-repeat" : "") + podium + changed;
       tr.appendChild(cell(doc, isRepeat ? "" : String(rank), "#", "lb-rank"));
-      tr.appendChild(cell(doc, displayName(row), "Player", "lb-player"));
+      tr.appendChild(cell(doc, String(row.nickname || ""), "Player", "lb-player"));
+      tr.appendChild(cell(doc, row.gft_id ? String(row.gft_id).toUpperCase() : "", "GFT ID", "lb-gft"));
       tr.appendChild(cell(doc, scoreText(row), "Score", ""));
       tr.appendChild(cell(doc, GL.formatDuration(num(row.elapsed_ms)) || "", "Time", ""));
       tr.appendChild(cell(doc, GL.formatTimestamp(row.finished_at), "Finished", ""));
@@ -299,6 +305,8 @@
     TOP_NAMES: TOP_NAMES,
     COLUMNS: COLUMNS,
     rankRows: rankRows,
+    displayName: displayName,
+    playerKey: playerKey,
     shouldPoll: shouldPoll,
     render: render,
     reload: reload,

@@ -70,6 +70,7 @@
       ["no storage banner (writes still work)", function (d) { return d.getElementById("storage-banner").hidden; }],
       ["Start still starts a contest", function (d) {
         d.getElementById("nickname").value = "Reader";
+        d.getElementById("gft-id").value = "AB12";
         d.getElementById("btn-start").click();
         return d.getElementById("screen-instructions").hidden === false;
       }],
@@ -90,8 +91,9 @@
       html = html.replace("</head>",
         '<script>window.__errors = [];' +
         'window.onerror = function (m) { window.__errors.push(String(m)); };<\/script>\n</head>');
-      html = html.replace('<script src="../js/app.js"><\/script>',
-        STUBS[variant] + '\n<script src="../js/app.js"><\/script>');
+      html = html.replace(/<script src="\.\.\/js\/app\.js(?:\?[^"]*)?"><\/script>/,
+        function (script) { return STUBS[variant] + "\n" + script; });
+      if (html.indexOf(STUBS[variant]) === -1) throw new Error("Boot stub was not installed");
 
       f.addEventListener("load", function () {
         setTimeout(function () {

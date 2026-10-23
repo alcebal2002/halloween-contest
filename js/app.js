@@ -48,7 +48,7 @@
 
   function emptyState() {
     return {
-      sessionId: "", nickname: "", phase: "nickname", questionIndex: 0,
+      sessionId: "", nickname: "", gftId: "", phase: "nickname", questionIndex: 0,
       questionOrder: [], answers: [], score: 0, bonus: null,
       startedAt: null, elapsedMs: 0, lastTickAt: null,
       lastAnswerAt: null, finishedAt: null
@@ -116,6 +116,8 @@
       hudPoints: $("hud-points"),
       hudQuestion: $("hud-question"),
       nickname: $("nickname"),
+      gftId: $("gft-id"),
+      gftIdError: $("gft-id-error"),
       nicknameError: $("nickname-error"),
       nicknameNote: $("nickname-note"),
       nicknameCheckingNote: $("nickname-checking"),
@@ -192,7 +194,9 @@
         // Unparseable JSON is simply ignored (spec §7, corrupt state). Only a
         // readable state we cannot resume means the question set changed.
         if (parsed) {
-          note = "changed";
+          note = GameLogic.validateGftId(parsed.gftId).ok ? "changed" : "identity";
+          var storedId = GameLogic.validateGftId(parsed.gftId);
+          if (storedId.ok) el.gftId.value = storedId.gftId;
           el.nicknameNote.hidden = false;
           var peek = GameLogic.validateNickname(parsed.nickname);
           if (peek.ok) {
@@ -207,6 +211,7 @@
       state = loaded;
       view = "nickname";
       el.nickname.value = loaded.nickname;
+      el.gftId.value = loaded.gftId;
     } else {
       state = loaded;
       questions = GameLogic.resolveOrder(state, pool).questions;
@@ -227,6 +232,16 @@
     });
     el.nickname.addEventListener("input", function () {
       el.nicknameError.hidden = true;
+      pendingNickname = null;
+      render();
+    });
+    el.gftId.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); onStart(); }
+    });
+    el.gftId.addEventListener("input", function () {
+      el.gftIdError.hidden = true;
+      pendingNickname = null;
+      render();
     });
     el.ready.addEventListener("click", onReady);
     el.continueBtn.addEventListener("click", onContinue);
@@ -245,6 +260,14 @@
 
   function onStart() {
     if (nicknameChecking) return;   // a claim is already in flight
+    var idCheck = GameLogic.validateGftId(el.gftId.value);
+    el.gftIdError.hidden = idCheck.ok;
+    if (!idCheck.ok) {
+      el.gftIdError.textContent = idCheck.reason;
+      el.gftId.focus();
+      return;
+    }
+    el.gftId.value = idCheck.gftId;
     var check = GameLogic.validateNickname(el.nickname.value);
     if (!check.ok) {
       el.nicknameError.hidden = false;
@@ -260,32 +283,32 @@
     if (pool.filter(GameLogic.isValidQuestion).length === 0) { showNoQuestions(); return; }
 
     var config = (typeof window !== "undefined" && window.SUPABASE_CONFIG) || null;
-    if (!ResultsApi.isConfigured(config)) { beginPlay(check.nickname); return; }
+    if (!ResultsApi.isConfigured(config)) { beginPlay(check.nickname, idCheck.gftId); return; }
 
-    // Claiming the nickname is itself the check: the table's case-insensitive
-    // unique constraint answers a repeat use of the same name with 409/23505.
+    // Claiming the identity is itself the check: the table's case-insensitive
+    // unique constraint answers a repeat use of the same pair with 409/23505.
     // Every other outcome — offline, timeout, server error — lets the player
     // through rather than blocking the game, so a network problem can never
     // lock a player out of the contest.
     nicknameChecking = true;
     render();
-    ResultsApi.claimNickname(config, check.nickname).then(function (res) {
+    ResultsApi.claimNickname(config, check.nickname, idCheck.gftId).then(function (res) {
       nicknameChecking = false;
       if (res.kind === "duplicate") {
-        pendingNickname = check.nickname;
+        pendingNickname = { nickname: check.nickname, gftId: idCheck.gftId };
         render();
         if (el.confirmNickname.focus) el.confirmNickname.focus();
         return;
       }
-      beginPlay(check.nickname);
+      beginPlay(check.nickname, idCheck.gftId);
     });
   }
 
   // Installs a validated nickname and opens the instructions screen. Shared by
   // the unconfigured (synchronous) path, a fresh claim, and a confirmed
   // duplicate.
-  function beginPlay(nickname) {
-    state = GameLogic.createInitialState(nickname, pool);
+  function beginPlay(nickname, gftId) {
+    state = GameLogic.createInitialState(nickname, pool, { gftId: gftId });
     questions = GameLogic.resolveOrder(state, pool).questions;
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
@@ -303,7 +326,7 @@
     if (!pendingNickname) return;
     var nickname = pendingNickname;
     pendingNickname = null;
-    beginPlay(nickname);
+    beginPlay(nickname.nickname, nickname.gftId);
   }
 
   // Dismisses the duplicate prompt and hands the screen back to the player. The
@@ -340,7 +363,7 @@
 
   function onStartOver() {
     var nickname = (state && state.nickname) || (el.nickname && el.nickname.value) || "";
-    state = GameLogic.beginPlay(GameLogic.createInitialState(nickname, pool), new Date());
+    state = GameLogic.beginPlay(GameLogic.createInitialState(nickname, pool, { gftId: state.gftId }), new Date());
     questions = GameLogic.resolveOrder(state, pool).questions;
     if (questions.length === 0) { showNoQuestions(); return; }
     lastFeedback = null;
@@ -550,18 +573,23 @@
 
     if (view === "nickname") {
       var duplicate = !!pendingNickname;
-      el.nicknameNote.hidden = note !== "changed";
+      el.nicknameNote.hidden = !note;
+      el.nicknameNote.textContent = note === "identity"
+        ? "Please enter your GFT ID to start a new contest. This saved contest has no valid GFT ID."
+        : "The question set changed - starting over.";
       el.nicknameCheckingNote.hidden = !nicknameChecking;
       el.nicknameDuplicate.hidden = !duplicate;
       if (duplicate) {
-        el.nicknameDuplicate.textContent = pendingNickname +
-          " is already used. Confirm it to play under this name, or choose another one.";
+        el.nicknameDuplicate.textContent = GameLogic.formatPlayerName(pendingNickname.nickname, pendingNickname.gftId) +
+          " is already used. Confirm it to play under this identity, or choose another one.";
       }
       el.confirmNickname.hidden = !duplicate;
       el.chooseAnother.hidden = !duplicate;
       $("nickname-duplicate-actions").hidden = !duplicate;
       el.start.hidden = duplicate;
       el.start.disabled = nicknameChecking;
+      el.gftId.disabled = nicknameChecking;
+      el.nickname.disabled = nicknameChecking;
       $("screen-nickname").hidden = false;
       return;
     }
@@ -629,7 +657,7 @@
     }
 
     if (view === "results") {
-      el.rTitle.textContent = state.nickname + ", here are your results";
+      el.rTitle.textContent = GameLogic.formatPlayerName(state.nickname, state.gftId) + ", here are your results";
       el.rScore.textContent = state.score + " / " + (questions.length * GameLogic.MAX_POINTS_PER_QUESTION);
       el.rTime.textContent = "Total time: " + (GameLogic.formatDuration(state.elapsedMs) || "0s");
       el.rFinished.textContent = GameLogic.formatTimestamp(state.finishedAt)

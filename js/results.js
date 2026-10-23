@@ -214,7 +214,7 @@
         for (var i = 0; i < ranked.length && current.length < 3; i++) {
           var r = ranked[i];
           if (!r || r.repeat === true) continue;
-          current.push([r.nickname, r.total_score, r.correct_count, r.elapsed_ms, r.finished_at || ""].join("|"));
+          current.push([r.nickname, r.gft_id || "", r.total_score, r.correct_count, r.elapsed_ms, r.finished_at || ""].join("|"));
         }
         if (lastPodium && current.length > 0) {
           for (var j = 0; j < current.length; j++) {

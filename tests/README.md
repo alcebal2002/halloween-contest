@@ -6,9 +6,9 @@ manual one.
 
 | Runner | How to run | Expected verdict |
 | --- | --- | --- |
-| `node tests/run-tests.js` | Node ≥ 14, from the project root | `127 passed, 0 failed`, exit code `0` |
-| `tests/test.html` | open directly (`file://`) or serve the folder | `127 passed, 0 failed` |
-| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `50 passed, 0 failed` |
+| `node tests/run-tests.js` | Node ≥ 14, from the project root | `133 passed, 0 failed`, exit code `0` |
+| `tests/test.html` | open directly (`file://`) or serve the folder | `133 passed, 0 failed` |
+| `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `52 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `39 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
 | `tests/boot-variants.html?variant=getitem` | serve the folder, open `/tests/boot-variants.html?variant=getitem` | `7 passed, 0 failed` |
@@ -38,7 +38,8 @@ profile has to be fresh.
 ## What each one covers
 
 - **`run-tests.js` / `test.html`** — the same `test-suite.js` in two environments (Node and
-  browser), covering question validation and selection, the state machine (instructions →
+  browser), covering GFT ID validation/normalization, identity persistence and result payloads,
+  distinct GFT ID + nickname ranking and podium exclusion, question validation and selection, the state machine (instructions →
   question → feedback → bonus → results), the poison-bonus points table (the question totals
   15 / 10 / 8 / 5 / 0, i.e. a +10 / +5 / +3 award on top of the 5-point correct answer), the
   per-position `matchPositions` helper, elapsed play time with the five-minute gap cap,
@@ -47,7 +48,8 @@ profile has to be fresh.
   order, so an async failure is reported instead of silently passing. If these two
   ever disagree, a UMD guard in `js/game-logic.js` or
   `js/questions.js` has broken.
-- **`app-check.html`** — drives the real `index.html` in an iframe: nickname validation, the
+- **`app-check.html`** — drives the real `index.html` in an iframe: mandatory four-character
+  alphanumeric GFT ID validation before nickname, case-preserving ID persistence, nickname validation, the
   instructions screen, the persistent score bar (`Total Points: N - Question X/Y`), the
   four-bottle poison tray (a glossy neon vial, drawn once and reused, with the
   colour named under each bottle and a dim empty vial in every unfilled order slot), immediate

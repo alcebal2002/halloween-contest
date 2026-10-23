@@ -13,8 +13,7 @@
   function num(v) { return Number(v) || 0; }
 
   function displayName(row) {
-    if (!row) return "";
-    return (typeof row.nickname === "string") ? row.nickname : String(row.nickname || "");
+    return LB.displayName(row);
   }
 
   // Pure: the three best distinct names, best first. rankRows already orders by
@@ -51,17 +50,20 @@
   // one appears on both stands (the top stand takes priority).
   function bottomThree(rows, exclude) {
     if (!Array.isArray(rows)) return [];
-    var skip = {};
-    (exclude || []).forEach(function (n) { skip[String(n).replace(/^\s+|\s+$/g, "")] = true; });
+    var skip = Object.create(null);
+    (exclude || []).forEach(function (n) {
+      skip[LB.playerKey(typeof n === "object" ? n : { nickname: n })] = true;
+    });
     var best = Object.create ? Object.create(null) : {};
     var order = [];
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       if (!row) continue;
       var name = (typeof row.nickname === "string") ? row.nickname.replace(/^\s+|\s+$/g, "") : "";
-      if (name === "" || skip[name]) continue;
-      if (!best[name]) { best[name] = { row: row, at: i }; order.push(name); }
-      else if (compareRuns(row, best[name].row) < 0) best[name].row = row;
+      var identity = LB.playerKey(row);
+      if (name === "" || skip[identity]) continue;
+      if (!best[identity]) { best[identity] = { row: row, at: i }; order.push(identity); }
+      else if (compareRuns(row, best[identity].row) < 0) best[identity].row = row;
     }
     var picks = order.map(function (n) { return best[n]; });
     picks.sort(function (a, b) {
@@ -77,6 +79,22 @@
     return num(n) + " correct";
   }
 
+  // Nickname on the first line, the GFT ID (when there is one) centred below it.
+  function setName(el, row) {
+    var doc = el.ownerDocument;
+    while (el.firstChild) el.removeChild(el.firstChild);
+    var nick = doc.createElement("span");
+    nick.className = "podium-nick";
+    nick.textContent = String(row.nickname || "");
+    el.appendChild(nick);
+    if (row.gft_id) {
+      var id = doc.createElement("span");
+      id.className = "podium-gft";
+      id.textContent = "[" + String(row.gft_id).toUpperCase() + "]";
+      el.appendChild(id);
+    }
+  }
+
   function fillSlot(board, place, row, loading) {
     var slot = board.querySelector('[data-place="' + place + '"]');
     if (!slot) return;
@@ -85,7 +103,10 @@
     var correctEl = slot.querySelector(".podium-correct");
     var hasRow = !!row;
 
-    if (nameEl) nameEl.textContent = hasRow ? displayName(row) : (loading ? "…" : "—");
+    if (nameEl) {
+      if (hasRow) setName(nameEl, row);
+      else nameEl.textContent = loading ? "…" : "—";
+    }
     if (scoreEl) scoreEl.textContent = hasRow ? String(num(row.total_score)) : "–";
     if (correctEl) correctEl.textContent = hasRow ? correctText(row.correct_count) : "";
 
@@ -208,7 +229,42 @@
     return buf;
   }
 
+  // The recording (see sounds/README.md) is fetched and decoded up front so it
+  // can start the moment the browser allows sound. If it can't load, the
+  // synthesised applause above plays instead.
+  var CLIP_URL = "sounds/applause-cheer.mp3";
+  var clip = { buffer: null, state: "idle", pending: false };
+
+  function loadClip(ctx) {
+    if (clip.state !== "idle" || !ctx || typeof fetch !== "function") return;
+    clip.state = "loading";
+    fetch(CLIP_URL)
+      .then(function (res) {
+        if (!res.ok) throw new Error("status " + res.status);
+        return res.arrayBuffer();
+      })
+      .then(function (bytes) {
+        return new Promise(function (resolve, reject) { ctx.decodeAudioData(bytes, resolve, reject); });
+      })
+      .then(function (buffer) { clip.buffer = buffer; clip.state = "ready"; },
+            function () { clip.state = "failed"; })
+      .then(function () {
+        if (clip.pending) { clip.pending = false; playApplause(ctx); }
+      });
+  }
+
+  function playClip(ctx) {
+    try {
+      var src = ctx.createBufferSource();
+      src.buffer = clip.buffer;
+      src.connect(ctx.destination);
+      src.start(ctx.currentTime);
+    } catch (e) { /* sound is decoration; never break the podium */ }
+  }
+
   function playApplause(ctx) {
+    if (clip.state === "loading") { clip.pending = true; return; }
+    if (clip.buffer) { playClip(ctx); return; }
     try {
       var t = ctx.currentTime;
       var dur = 5;
@@ -257,6 +313,7 @@
     if (!AC) return;
     try {
       if (!sound.ctx) sound.ctx = new AC();
+      loadClip(sound.ctx);
       var p = sound.ctx.resume ? sound.ctx.resume() : null;
       Promise.resolve(p).then(tryPlay, function () {});
       tryPlay();
@@ -268,6 +325,7 @@
     doc.addEventListener("pointerdown", unlock);
     doc.addEventListener("keydown", unlock);
     try { sound.ctx = new (audioCtor())(); } catch (e) { sound.ctx = null; }
+    loadClip(sound.ctx);
   }
 
   function showSoundButton(doc) {
@@ -309,7 +367,7 @@
     // The bottom stand waits for the top one so it can skip its names.
     loadWith(doc, api, config).then(function (res) {
       if (res && res.ok && topThree(res.rows).length) cheer(doc);
-      var top = (res && res.ok) ? topThree(res.rows).map(displayName) : [];
+      var top = (res && res.ok) ? topThree(res.rows) : [];
       return loadBottomWith(doc, api, config, top);
     });
     return null;

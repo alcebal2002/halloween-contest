@@ -81,6 +81,7 @@
       rec("score bar is hidden before the contest starts", $("hud").hidden, $("hud").hidden);
 
       $("nickname").value = "Bat";
+      $("gft-id").value = "AB12";
       click($("btn-start"));
       await wait(50);
       checkScreen("instructions", "instructions");

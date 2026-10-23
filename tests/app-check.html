@@ -98,7 +98,7 @@
       f.src = "../index.html?cb=" + Date.now();
     });
   }
-  function type(text) { $("nickname").value = text; }
+  function type(text) { $("gft-id").value = "AB12"; $("nickname").value = text; }
   function click(el) { el.dispatchEvent(new (W().MouseEvent)("click", { bubbles: true })); }
   function pressEnter() {
     $("nickname").dispatchEvent(new (W().KeyboardEvent)("keydown", { key: "Enter", bubbles: true, cancelable: true }));
@@ -148,6 +148,19 @@
     W().localStorage.clear();
     await reload();
 
+    step("GFT ID is mandatory, validated before nickname, and precedes it", function () {
+      $("nickname").value = "Bat";
+      ["", "ABC", "ABCDE", "AB-1"].forEach(function (id) {
+        $("gft-id").value = id;
+        click($("btn-start"));
+        if ($("gft-id-error").hidden || app().getState().sessionId) throw new Error("accepted " + id);
+      });
+      rec("GFT ID is mandatory, validated before nickname, and precedes it",
+        D().activeElement === $("gft-id") &&
+        !!($("gft-id").compareDocumentPosition($("nickname")) & W().Node.DOCUMENT_POSITION_FOLLOWING),
+        "invalid IDs rejected before starting");
+    });
+
     /* ---- 9. nickname validation ---- */
     step("9. empty and 21-character nicknames are rejected inline, state unchanged", function () {
       type("");
@@ -167,12 +180,15 @@
     /* ---- 7 (part) + start ---- */
     await astep("7. Enter in the nickname input opens the instructions screen", async function () {
       type("Bat");
+      $("gft-id").value = "aB12";
       pressEnter();
       await settle();
       var st = app().getState();
       rec("7. Enter in the nickname input opens the instructions screen",
         app().getView() === "instructions" && screenOn() === "screen-instructions" &&
-          st.nickname === "Bat" && st.phase === "instructions" && st.questionIndex === 0,
+          st.nickname === "Bat" && st.gftId === "aB12" &&
+          JSON.parse(W().localStorage.getItem(W().GameLogic.STORAGE_KEY)).gftId === "aB12" &&
+          st.phase === "instructions" && st.questionIndex === 0,
         "view=" + app().getView() + " screen=" + screenOn() + " phase=" + st.phase);
     });
 
@@ -591,7 +607,7 @@
       var st = app().getState();
       rec("4. Start over regenerates sessionId and clears progress",
         st.sessionId !== before && st.answers.length === 0 && st.score === 0 && st.questionIndex === 0 &&
-          st.bonus === null && app().getView() === "question",
+          st.bonus === null && st.gftId === "AB12" && app().getView() === "question",
         "newSession=" + (st.sessionId !== before) + " answers=" + st.answers.length + " view=" + app().getView());
     });
 
@@ -730,6 +746,8 @@
           retry.hidden &&
           saveStub.calls.length === 1 &&
           call.url.indexOf("/rest/v1/contest_results") !== -1 &&
+          JSON.parse(call.opts.body).gft_id === "AB12" &&
+          $("results-title").textContent.indexOf(" [AB12], here are your results") !== -1 &&
           call.opts.headers["apikey"].indexOf("sb_") === 0,
         "sawSaving=" + sawSaving + " text='" + line.textContent + "' retryHidden=" + retry.hidden +
           " calls=" + saveStub.calls.length + " url=" + (call ? call.url : "none"));
@@ -873,7 +891,8 @@
       var call = nicknameStub.calls[0];
       var posted = nicknameStub.calls.length === 1 &&
         /\/rest\/v1\/nicknames$/.test(String(call && call.url)) &&
-        JSON.parse(call.opts.body).nickname === "Fresh";
+        JSON.parse(call.opts.body).nickname === "Fresh" &&
+        JSON.parse(call.opts.body).gft_id === "AB12";
       rec("nick1. a new nickname is claimed against the table and play begins",
         posted && app().getView() === "instructions" && screenOn() === "screen-instructions",
         "calls=" + nicknameStub.calls.length + " view=" + app().getView() + " screen=" + screenOn());
@@ -972,6 +991,17 @@
         "blocked=" + blocked + " calls=" + nicknameStub.calls.length + " view=" + app().getView());
       nicknameStub.mode = "success";
       nicknameStub.delayMs = 1000;
+    });
+
+    await astep("legacy progress without a GFT ID requests registration explicitly", async function () {
+      var saved = app().getState();
+      delete saved.gftId;
+      W().localStorage.setItem(KEY(), JSON.stringify(saved));
+      await reload();
+      rec("legacy progress without a GFT ID requests registration explicitly",
+        app().getView() === "nickname" && $("nickname").value === saved.nickname &&
+        !$("nickname-note").hidden && $("nickname-note").textContent.indexOf("GFT ID") !== -1,
+        "legacy progress cannot bypass the mandatory ID");
     });
 
     /* ---- report ---- */

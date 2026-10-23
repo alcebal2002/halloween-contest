@@ -513,9 +513,10 @@ a.btn { display: block; text-align: center; text-decoration: none; }
    cells keep `overflow-wrap: anywhere`, so a long timestamp folds rather than
    pushing the table sideways. Percentages are of the table, which is capped at
    640px on desktop, so they reproduce the intended pixel widths there. */
-.lb-table th:nth-child(2) { width: 37.2%; }
-.lb-table th:nth-child(3) { width: 13.5%; }
-.lb-table th:nth-child(4) { width: 14.0%; }
+.lb-table th:nth-child(2) { width: 26%; }
+.lb-table th:nth-child(3) { width: 11.2%; }
+.lb-table th:nth-child(4) { width: 13.5%; }
+.lb-table th:nth-child(5) { width: 14.0%; }
 .lb-table td.lb-player { white-space: nowrap; }
 .lb-table tr.is-repeat td { color: var(--muted); opacity: 0.62; }
 /* Podium: the top three rows get a magenta band so the standings read at a
@@ -642,9 +643,11 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   overflow-wrap: anywhere;
   min-height: 2.4em;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
 }
+.podium-gft { font-size: 0.65em; font-weight: 600; letter-spacing: 1px; opacity: 0.85; text-align: center; }
 .podium-slot-1 .podium-name { color: var(--orange); text-shadow: 0 0 14px rgba(255, 122, 26, 0.45); }
 
 /* All three boxes share the leaderboard's magenta so the two pages read as one
@@ -773,7 +776,7 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 .podium-inverted .podium-slot { justify-content: flex-start; }
 .podium-inverted .podium-name {
   color: #d946ef;
-  align-items: flex-start;
+  justify-content: flex-start;
 }
 .podium-inverted .podium-slot-1 .podium-name { color: #f0abfc; text-shadow: 0 0 14px rgba(217, 70, 239, 0.5); }
 .podium-inverted .podium-box {
@@ -839,4 +842,6 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 
 .results-leaderboard {
   margin-top: 28px;
+  padding-top: 28px;
+  border-top: 2px solid var(--orange);
 }

@@ -1,6 +1,9 @@
 # Sound assets
 
 - `wolf-howl.mp3` — Halloween wolf howling sound, played when the top three change.
+- `applause-cheer.mp3` — crowd applause and cheer, played on the podium page. If the file is missing, the podium falls back to a synthesised applause.
+
+Source: [Applause and cheer crowd celebration sound effect](https://pixabay.com/sound-effects/people-applause-cheer-236786/) by Driken5482 — Pixabay Content License (free to use, no attribution required).
 
 Source: [Wolf Howl 01](https://sfxmint.com/sounds/wolf-howl-01) — measured, CC0 1.0
 public-domain sample (4.9 s, 44.1 kHz stereo MP3). No attribution required.

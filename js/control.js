@@ -21,7 +21,7 @@
     function rowTile(fig, pick) {
       if (!fig || !fig.ok) return { value: "Error", sub: "", error: true };
       if (!fig.row) return { value: EMPTY, sub: "No results yet", error: false };
-      return { value: pick(fig.row), sub: "by " + String(fig.row.nickname || ""), error: false };
+      return { value: pick(fig.row), sub: "by " + GL.formatPlayerName(fig.row.nickname, fig.row.gft_id), error: false };
     }
     return {
       nicknames: countTile(stats.nicknames),
