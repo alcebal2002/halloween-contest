@@ -44,7 +44,12 @@
     if (!AC) return;
     try {
       if (!audio.ctx) audio.ctx = new AC();
-      if (audio.ctx.state === "suspended") audio.ctx.resume();
+      var resumed = (audio.ctx.state === "suspended" && audio.ctx.resume)
+        ? audio.ctx.resume()
+        : null;
+      Promise.resolve(resumed).then(function () {
+        if (audio.ctx && audio.ctx.state === "running") hideSoundButton();
+      }, function () { /* still blocked until the next gesture */ });
       loadScream(audio.ctx);
     } catch (e) { audio.ctx = null; }
   }
@@ -73,6 +78,35 @@
   }
 
   var lastPodium = null;
+  var soundBtn = null;
+
+  function hideSoundButton() {
+    if (soundBtn && soundBtn.parentNode) soundBtn.parentNode.removeChild(soundBtn);
+    soundBtn = null;
+  }
+
+  // Modern browsers hold audio suspended until the page has had a user gesture.
+  // A results screen is often opened and left alone, so nothing would ever
+  // unlock it: this button is the gesture, and it disappears once the context
+  // is running.
+  function showSoundButton(doc) {
+    if (soundBtn || !doc || !doc.body) return;
+    var b = doc.createElement("button");
+    b.type = "button";
+    b.className = "btn sound-btn";
+    b.textContent = "\ud83d\udd0a Enable sound";
+    b.addEventListener("click", function () {
+      unlockAudio();
+      if (audio.ctx && audio.ctx.state === "running") hideSoundButton();
+    });
+    doc.body.appendChild(b);
+    soundBtn = b;
+  }
+
+  function syncSoundButton(doc) {
+    if (audio.ctx && audio.ctx.state === "running") hideSoundButton();
+    else showSoundButton(doc);
+  }
 
   function boot(doc, api, config) {
     if (!doc || !api) return null;
@@ -82,6 +116,9 @@
       doc.addEventListener("keydown", unlockAudio);
     }
     prepareAudio();
+    // Give a permissive browser a moment to run the context before offering the
+    // button, so it only appears when sound is genuinely blocked.
+    setTimeout(function () { syncSoundButton(doc); }, 600);
 
     var status = doc.getElementById("res-status");
 
