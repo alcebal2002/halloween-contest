@@ -814,3 +814,29 @@ a.btn { display: block; text-align: center; text-decoration: none; }
   bottom: 1rem;
   z-index: 3;
 }
+
+
+/* Combined results page styles */
+.card-wide {
+  max-width: 880px;
+}
+
+.kpi-grid-wide {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 780px) {
+  .kpi-grid-wide {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .kpi-grid-wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+.results-leaderboard {
+  margin-top: 28px;
+}

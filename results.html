@@ -3,52 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GFT Halloween Contest Control</title>
+<title>GFT Halloween Contest Results</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <div class="fog" aria-hidden="true"></div>
 
-<main class="card">
+<main class="card card-wide">
   <header class="masthead">
-    <h1 class="title">GFT Halloween Contest Control</h1>
-    <p id="ctl-status" class="save-status" aria-live="polite">Loading&hellip;</p>
+    <h1 class="title">GFT Halloween Contest Results</h1>
+    <p id="res-status" class="save-status" aria-live="polite">Loading&hellip;</p>
   </header>
 
-  <section class="kpi-grid" aria-label="Contest statistics">
+  <section class="kpi-grid kpi-grid-wide" aria-label="Contest statistics">
     <article id="kpi-nicknames" class="kpi kpi-magenta">
       <span class="kpi-icon" aria-hidden="true">🦇</span>
-      <span class="kpi-label">Registered nicknames</span>
+      <span class="kpi-label">Registered Nicknames</span>
       <span class="kpi-value">&hellip;</span>
       <span class="kpi-sub"></span>
     </article>
     <article id="kpi-contests" class="kpi kpi-orange">
       <span class="kpi-icon" aria-hidden="true">🎃</span>
-      <span class="kpi-label">Completed contests</span>
+      <span class="kpi-label">Completed Contests</span>
       <span class="kpi-value">&hellip;</span>
       <span class="kpi-sub"></span>
     </article>
     <article id="kpi-maxScore" class="kpi kpi-purple">
       <span class="kpi-icon" aria-hidden="true">🏆</span>
-      <span class="kpi-label">Max score</span>
+      <span class="kpi-label">Max Score</span>
       <span class="kpi-value">&hellip;</span>
       <span class="kpi-sub"></span>
     </article>
     <article id="kpi-minTime" class="kpi kpi-green">
       <span class="kpi-icon" aria-hidden="true">⏱️</span>
-      <span class="kpi-label">Min contest time</span>
+      <span class="kpi-label">Min Contest Time</span>
       <span class="kpi-value">&hellip;</span>
       <span class="kpi-sub"></span>
     </article>
   </section>
 
+  <section class="results-leaderboard" aria-label="Leaderboard">
+    <div id="lb-board">
+      <table id="lb-table" class="lb-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Player</th><th>Score</th><th>Time</th><th>Finished</th>
+          </tr>
+        </thead>
+        <tbody id="lb-body"></tbody>
+      </table>
+      <p id="lb-message" class="lb-message" hidden></p>
+    </div>
+  </section>
+
   <div class="actions actions-stack">
-    <button id="ctl-refresh" class="btn" type="button">Refresh</button>
-    <a class="btn btn-ghost" href="stats.html">See the leaderboard</a>
-    <a class="btn btn-ghost" href="index.html">Back to the questionnaire</a>
+    <a class="btn btn-ghost" href="podium.html">See the Podium</a>
   </div>
 </main>
 
@@ -58,8 +70,10 @@
 <script src="js/supabase-config.js?v=2"></script>
 <script src="js/results-api.js?v=2"></script>
 <script src="js/control.js?v=2"></script>
+<script src="js/leaderboard.js?v=9"></script>
+<script src="js/results.js?v=1"></script>
 <script>
-  Control.boot(document, ResultsApi, window.SUPABASE_CONFIG);
+  Results.boot(document, ResultsApi, window.SUPABASE_CONFIG);
 </script>
 </body>
 </html>
