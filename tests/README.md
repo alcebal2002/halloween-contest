@@ -10,7 +10,6 @@ manual one.
 | `tests/test.html` | open directly (`file://`) or serve the folder | `127 passed, 0 failed` |
 | `tests/app-check.html` | serve the folder, open `/tests/app-check.html` | `50 passed, 0 failed` |
 | `tests/layout-check.html` | serve the folder, open `/tests/layout-check.html` | `39 passed, 0 failed` |
-| `tests/stats-check.html` | serve the folder, open `/tests/stats-check.html` | `22 passed, 0 failed` |
 | `tests/boot-variants.html?variant=emptypool` | serve the folder, open `/tests/boot-variants.html?variant=emptypool` | `6 passed, 0 failed` |
 | `tests/boot-variants.html?variant=getitem` | serve the folder, open `/tests/boot-variants.html?variant=getitem` | `7 passed, 0 failed` |
 | `.superpowers/sdd/halloween-contest/nostorage-index.html` | serve the folder, open that path | `<title>nostorage: PASS` |
@@ -87,32 +86,6 @@ profile has to be fresh.
   this walkthrough must never post a row. (Edge/Chrome headless cannot be
   windowed below ~492px, so a `--window-size=360` screenshot is a left-crop of a wider layout
   and lies about overflow — this iframe does not.)
-- **`stats-check.html`** — drives the real `stats.html` through an `srcdoc` iframe with `fetch`
-  stubbed *before* any page script runs (`app-check.html` stubs after `load`, which is too late for
-  a page that fetches on boot): ranks 1-10 over ten distinct names, a repeat row greyed beneath its
-  own name with an empty rank cell, a `<img src=x onerror=...>` nickname landing as literal text
-  with no element created, score/correct/bonus/time/finished each landing in their own column,
-  malformed numbers and an unparseable timestamp coercing instead of throwing, the three-row
-  loading skeleton, the empty state's copy and **Play now** link, an error that leaves the rendered
-  rows untouched, an error on *first* load falling through to the message instead of parking the
-  skeleton, boot fetching and rendering on its own, a failed refresh followed by a working
-  recovery, a short injected refresh interval, a load in flight never being overlapped,
-  `visibilitychange` loading immediately, an unconfigured config showing its message with zero
-  requests, and the seven columns reflowed inside a genuine 360px iframe without horizontal scroll.
-  It never contacts the live project: the stub intercepts both `fetch` and `SUPABASE_CONFIG`, so
-  the not-configured path is reachable without editing `js/supabase-config.js`.
-- **`boot-variants.html`** — injects a fault before `js/app.js` into a copy of the real page
-  (no duplicated markup): an empty question pool, and storage that accepts writes but throws
-  on reads. It blanks the Supabase key first, so Start stays synchronous and never reaches the
-  live project — the storage fault, not a network race, is what these variants exercise.
-- **`nostorage-index.html`** — generated copy of `index.html` with `localStorage` blocked
-  entirely, then plays a full contest in memory (nickname → instructions → 10 questions →
-  results), asserting the save status stays hidden too (the generator blanks the
-  Supabase key for the same reason `layout-check.html` does, and refuses to write
-  its copy at all unless that blanking actually landed — a silently skipped
-  replacement would otherwise let a test post a real row). It is generated, never
-  edited: after changing `index.html`, regenerate it with
-
   ```
   node tests/make-nostorage.js
   ```

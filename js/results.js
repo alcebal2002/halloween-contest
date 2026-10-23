@@ -11,49 +11,64 @@
   "use strict";
 
   var REFRESH_MS = 10000;
-  var audioCtx = null;
+  var SCREAM_URL = "sounds/ghost-scream.mp3";
 
-  function unlockAudio() {
-    var AC = rootRef && (rootRef.AudioContext || rootRef.webkitAudioContext);
-    if (!AC) return;
-    try {
-      if (!audioCtx) audioCtx = new AC();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-    } catch (e) { audioCtx = null; }
+  // The scream is a real recording (CC0, see sounds/README.md). It is fetched
+  // and decoded once, then replayed from the decoded buffer, because decoding
+  // on every change would add a network round-trip to the moment the room
+  // should hear the sound.
+  var audio = { ctx: null, buffer: null, loading: false };
+
+  function audioCtor() {
+    return rootRef && (rootRef.AudioContext || rootRef.webkitAudioContext);
   }
 
-  function playGhostScream() {
-    var ctx = audioCtx;
-    if (!ctx || ctx.state !== "running") return;
+  function loadScream(ctx) {
+    if (audio.buffer || audio.loading) return;
+    audio.loading = true;
     try {
-      var t = ctx.currentTime;
-      var dur = 2.4;
-      var master = ctx.createGain();
-      master.gain.setValueAtTime(0.0001, t);
-      master.gain.exponentialRampToValueAtTime(0.6, t + 0.3);
-      master.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      master.connect(ctx.destination);
-
-      // Try to use the downloaded sound file
-      var req = new XMLHttpRequest();
-      req.open('GET', 'sounds/ghost-scream.wav', true);
-      req.responseType = 'arraybuffer';
-      req.onload = function() {
-        try {
-          ctx.decodeAudioData(req.response, function(buffer) {
-            var src = ctx.createBufferSource();
-            src.buffer = buffer;
-            var g = ctx.createGain();
-            g.gain.setValueAtTime(0.8, t);
-            g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, buffer.duration));
-            src.connect(g);
-            g.connect(master);
-            src.start(t);
-            src.stop(t + Math.min(dur, buffer.duration));
+      fetch(SCREAM_URL)
+        .then(function (res) { return res.arrayBuffer(); })
+        .then(function (bytes) {
+          return new Promise(function (resolve, reject) {
+            ctx.decodeAudioData(bytes, resolve, reject);
           });
-        } catch(e) {}
-      };
-      req.send();
+        })
+        .then(function (buffer) { audio.buffer = buffer; }, function () { /* silent */ })
+        .then(function () { audio.loading = false; });
+    } catch (e) { audio.loading = false; }
+  }
+
+  function unlockAudio() {
+    var AC = audioCtor();
+    if (!AC) return;
+    try {
+      if (!audio.ctx) audio.ctx = new AC();
+      if (audio.ctx.state === "suspended") audio.ctx.resume();
+      loadScream(audio.ctx);
+    } catch (e) { audio.ctx = null; }
+  }
+
+  // Warm the buffer at boot too: a browser that allows audio without a gesture
+  // (kiosk flags, prior engagement) then plays a change straight away, and the
+  // rest still get their first click or key press to unlock it.
+  function prepareAudio() {
+    unlockAudio();
+  }
+
+  // A browser only allows audio after a user gesture, so this stays silent
+  // until the page has been clicked or a key pressed once.
+  function playGhostScream() {
+    var ctx = audio.ctx;
+    if (!ctx || ctx.state !== "running" || !audio.buffer) return;
+    try {
+      var src = ctx.createBufferSource();
+      var gain = ctx.createGain();
+      src.buffer = audio.buffer;
+      gain.gain.value = 0.9;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(0);
     } catch (e) { /* sound is decoration; never break the board */ }
   }
 
@@ -66,18 +81,16 @@
       doc.addEventListener("pointerdown", unlockAudio);
       doc.addEventListener("keydown", unlockAudio);
     }
+    prepareAudio();
 
     var status = doc.getElementById("res-status");
-    var button = doc.getElementById("ctl-refresh");
 
     function loadStats() {
       if (status) {
         status.className = "save-status";
         status.textContent = "Loading\u2026";
       }
-      if (button) button.disabled = true;
       return api.fetchDashboardStats(config).then(function (res) {
-        if (button) button.disabled = false;
         if (!res.ok) {
           if (status) {
             status.className = "save-status is-error";
@@ -113,27 +126,23 @@
           message: "No results yet — finish a contest and your score appears here.",
           link: ranked.length ? null : { href: "index.html", text: "Play now" }
         });
-        // Check for changes in top 3 to play sound
-        if (ranked.length >= 3) {
-          var current = [];
-          for (var i = 0; i < 3; i++) {
-            if (!ranked[i] || ranked[i].repeat) {
-              // need to find first non-repeat
-            }
-            var r = ranked[i];
-            if (r && !r.repeat) current.push([r.nickname, r.total_score, r.correct_count, r.elapsed_ms].join("|"));
-            else i--; // skip repeats
-          }
-          if (lastPodium && current.length === 3) {
-            for (var j = 0; j < 3; j++) {
-              if (lastPodium[j] !== current[j]) {
-                playGhostScream();
-                break;
-              }
-            }
-          }
-          lastPodium = current;
+        // The three best distinct players, in order. A repeat run is skipped,
+        // and the walk is bounded so a short board can never spin.
+        var current = [];
+        for (var i = 0; i < ranked.length && current.length < 3; i++) {
+          var r = ranked[i];
+          if (!r || r.repeat === true) continue;
+          current.push([r.nickname, r.total_score, r.correct_count, r.elapsed_ms, r.finished_at || ""].join("|"));
         }
+        if (lastPodium && current.length > 0) {
+          for (var j = 0; j < current.length; j++) {
+            if (lastPodium[j] !== current[j]) {
+              playGhostScream();
+              break;
+            }
+          }
+        }
+        lastPodium = current;
         return res;
       }, function (e) {
         inFlight = false;
@@ -145,10 +154,9 @@
       return Promise.all([loadStats(), loadLeaderboard()]);
     }
 
-    if (button) button.addEventListener("click", loadAll);
     loadAll();
     if (typeof setInterval !== "undefined") {
-      setInterval(function() {
+      setInterval(function () {
         if (doc.hidden) return;
         loadAll();
       }, REFRESH_MS);

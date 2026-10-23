@@ -268,11 +268,15 @@
     var table = doc.getElementById("lb-table");
     var msg = doc.getElementById("lb-message");
     var body = doc.getElementById("lb-body");
-    if (!status || !table || !msg || !body) return;
+    if (!table || !msg || !body) return;
 
     var state = (view && view.state) ? view.state : "";
-    status.textContent = (view && view.status) || "";
-    status.className = "save-status" + (state === "error" ? " is-error" : "");
+    // The status line is optional: the combined results page has one status
+    // line for the whole page, so it renders the board without it.
+    if (status) {
+      status.textContent = (view && view.status) || "";
+      status.className = "save-status" + (state === "error" ? " is-error" : "");
+    }
 
     // "Prior rows" means rows that actually carry data. A skeleton is the
     // loading placeholder, so a failure on the very first load must fall
