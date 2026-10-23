@@ -100,112 +100,9 @@
   // first rows are drawn, so opening the page never blinks.
   var lastPodium = null;
 
-  // Synthesised scream (Web Audio, no asset): a shrieking sawtooth glide with
-  // vibrato, a detuned second voice and a breathy noise layer. Browsers block
-  // audio until the page has had a user gesture, so the context is created
-  // (or resumed) on the first click/key and a change before that stays silent.
-  var audioCtx = null;
-
-  function unlockAudio() {
-    var AC = rootRef && (rootRef.AudioContext || rootRef.webkitAudioContext);
-    if (!AC) return;
-    try {
-      if (!audioCtx) audioCtx = new AC();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-    } catch (e) { audioCtx = null; }
-  }
-
-  function playScream() {
-    var ctx = audioCtx;
-    if (!ctx || ctx.state !== "running") return;
-    try {
-      // Ghost moan, ~3s: a low, hollow "uhhhhmmmmm" that fades in out of
-      // nothing, sags slowly in pitch, and closes from an open "uhh" into a
-      // muffled "mmm" hum. Soft waveforms, a slow wobble, two slightly
-      // detuned voices for a beating, otherworldly feel, a long echo tail and
-      // a faint draught of air underneath. Nothing sharp or high.
-      var t = ctx.currentTime;
-      var dur = 3.2;
-      var master = ctx.createGain();
-      master.gain.setValueAtTime(0.0001, t);
-      master.gain.exponentialRampToValueAtTime(0.55, t + 0.9);
-      master.gain.setValueAtTime(0.55, t + 2.0);
-      master.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      master.connect(ctx.destination);
-
-      var echo = ctx.createDelay(1);
-      echo.delayTime.value = 0.35;
-      var feedback = ctx.createGain();
-      feedback.gain.value = 0.45;
-      var echoTone = ctx.createBiquadFilter();
-      echoTone.type = "lowpass";
-      echoTone.frequency.value = 800;
-      echo.connect(echoTone);
-      echoTone.connect(feedback);
-      feedback.connect(echo);
-      echoTone.connect(master);
-
-      // Open "uhh" (filter ~1000 Hz) closing to a hummed "mmm" (~300 Hz).
-      var voice = ctx.createBiquadFilter();
-      voice.type = "lowpass";
-      voice.frequency.setValueAtTime(500, t);
-      voice.frequency.linearRampToValueAtTime(1000, t + 0.9);
-      voice.frequency.setValueAtTime(1000, t + 1.6);
-      voice.frequency.exponentialRampToValueAtTime(300, t + 2.4);
-      voice.Q.value = 2;
-      voice.connect(master);
-      voice.connect(echo);
-
-      [[1, "triangle", 0.6, 0], [1, "sine", 0.4, 9], [2, "sine", 0.12, -5]].forEach(function (v) {
-        var ratio = v[0];
-        var osc = ctx.createOscillator();
-        osc.type = v[1];
-        osc.detune.value = v[3];
-        osc.frequency.setValueAtTime(120 * ratio, t);
-        osc.frequency.exponentialRampToValueAtTime(165 * ratio, t + 1.0);
-        osc.frequency.exponentialRampToValueAtTime(150 * ratio, t + 1.8);
-        osc.frequency.exponentialRampToValueAtTime(105 * ratio, t + dur);
-        var lfo = ctx.createOscillator();
-        var lfoGain = ctx.createGain();
-        lfo.frequency.setValueAtTime(3, t);
-        lfo.frequency.linearRampToValueAtTime(4.5, t + dur);
-        lfoGain.gain.value = 4 * ratio;
-        lfo.connect(lfoGain);
-        lfoGain.connect(osc.frequency);
-        var g = ctx.createGain();
-        g.gain.value = v[2];
-        osc.connect(g);
-        g.connect(voice);
-        osc.start(t); lfo.start(t);
-        osc.stop(t + dur); lfo.stop(t + dur);
-      });
-
-      var len = Math.floor(ctx.sampleRate * dur);
-      var buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      var data = buf.getChannelData(0);
-      for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-      var noise = ctx.createBufferSource();
-      noise.buffer = buf;
-      var wind = ctx.createBiquadFilter();
-      wind.type = "bandpass";
-      wind.frequency.setValueAtTime(300, t);
-      wind.frequency.linearRampToValueAtTime(600, t + 1.2);
-      wind.frequency.linearRampToValueAtTime(250, t + dur);
-      wind.Q.value = 1.5;
-      var noiseGain = ctx.createGain();
-      noiseGain.gain.value = 0.08;
-      noise.connect(wind);
-      wind.connect(noiseGain);
-      noiseGain.connect(master);
-      noise.start(t);
-      noise.stop(t + dur);
-    } catch (e) { /* sound is decoration; never break the board */ }
-  }
-
   function writeRows(doc, body, rows) {
     body.textContent = "";
     var prev = lastPodium;
-    var anyChanged = false;
     var podiumNow = [];
     var rank = 0;
     for (var i = 0; i < rows.length; i++) {
@@ -223,7 +120,7 @@
       if (podium) {
         var key = podiumKey(row);
         podiumNow[rank - 1] = key;
-        if (prev && prev[rank - 1] !== key) { changed = " is-changed"; anyChanged = true; }
+        if (prev && prev[rank - 1] !== key) changed = " is-changed";
       }
       tr.className = "lb-row" + (isRepeat ? " is-repeat" : "") + podium + changed;
       tr.appendChild(cell(doc, isRepeat ? "" : String(rank), "#", "lb-rank"));
@@ -234,7 +131,6 @@
       body.appendChild(tr);
     }
     lastPodium = podiumNow;
-    if (anyChanged) playScream();
   }
 
   function writeSkeleton(doc, body) {
@@ -387,8 +283,6 @@
       refresh.addEventListener("click", function () { reload(); });
     }
     if (doc.addEventListener) {
-      doc.addEventListener("pointerdown", unlockAudio);
-      doc.addEventListener("keydown", unlockAudio);
       doc.addEventListener("visibilitychange", function () {
         if (doc.hidden) return;
         reload();

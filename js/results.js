@@ -11,18 +11,18 @@
   "use strict";
 
   var REFRESH_MS = 10000;
-  var SCREAM_URL = "sounds/ghost-scream.mp3";
+  var HOWL_URL = "sounds/wolf-howl.mp3";
   // The recording runs ~11s. A blink should be a punctuation mark, not a
   // soundtrack, so playback fades out and stops after this many seconds.
-  var SCREAM_SECONDS = 4;
+  var HOWL_SECONDS = 4;
 
-  // The scream is a real recording (CC0, see sounds/README.md). It is fetched
+  // The howl is a real recording (CC0, see sounds/README.md). It is fetched
   // and decoded once, then replayed from the decoded buffer, because decoding
   // on every change would add a network round-trip to the moment the room
   // should hear the sound.
   var audio = { ctx: null, buffer: null, loading: false, queued: false };
   // Set while an unlock preview is waiting for resume(): the same tap fires
-  // pointerdown and the button's click, and both must not scream.
+  // pointerdown and the button's click, and both must not howl.
   var previewArmed = false;
 
   function audioCtor() {
@@ -33,7 +33,7 @@
     if (audio.buffer || audio.loading) return;
     audio.loading = true;
     try {
-      fetch(SCREAM_URL)
+      fetch(HOWL_URL)
         .then(function (res) { return res.arrayBuffer(); })
         .then(function (bytes) {
           return new Promise(function (resolve, reject) {
@@ -44,8 +44,15 @@
           audio.buffer = buffer;
           // A change that landed while the file was still decoding is honoured
           // as soon as the buffer is ready, instead of being lost.
-          if (audio.queued) { audio.queued = false; playGhostScream(); }
-        }, function () { /* silent; the next gesture retries the fetch */ })
+          if (audio.queued) { audio.queued = false; playHowl(); }
+        }, function (err) {
+          // The board must never break because a sound failed. Say so in the
+          // console, though: a wrong file (an HTML error page saved as .mp3)
+          // would otherwise fail silently forever.
+          if (rootRef && rootRef.console) {
+            rootRef.console.warn("Wolf howl failed to load: " + HOWL_URL, err);
+          }
+        })
         .then(function () { audio.loading = false; });
     } catch (e) { audio.loading = false; }
   }
@@ -68,11 +75,11 @@
         }
         hideSoundButton();
         // Play once when a gesture finally unlocks audio, so the click has
-        // audible feedback and the operator knows the scream is working. Boot
-        // never previews: a permissive browser would scream on page load.
+        // audible feedback and the operator knows the howl is working. Boot
+        // never previews: a permissive browser would howl on page load.
         if (wantPreview) {
           previewArmed = false;
-          playGhostScream();
+          playHowl();
         }
       }, function () {
         // Still blocked until the next gesture: allow a later click to try.
@@ -92,7 +99,7 @@
   // A browser only allows audio after a user gesture, so this stays silent
   // until the page has been clicked or a key pressed once. A change that
   // arrives before the recording has decoded is queued rather than dropped.
-  function playGhostScream() {
+  function playHowl() {
     var ctx = audio.ctx;
     if (!ctx || ctx.state !== "running") return;
     if (!audio.buffer) {
@@ -101,7 +108,7 @@
     }
     try {
       var t = ctx.currentTime;
-      var dur = Math.min(SCREAM_SECONDS, audio.buffer.duration);
+      var dur = Math.min(HOWL_SECONDS, audio.buffer.duration);
       var src = ctx.createBufferSource();
       var gain = ctx.createGain();
       src.buffer = audio.buffer;
@@ -212,7 +219,7 @@
         if (lastPodium && current.length > 0) {
           for (var j = 0; j < current.length; j++) {
             if (lastPodium[j] !== current[j]) {
-              playGhostScream();
+              playHowl();
               break;
             }
           }
@@ -242,7 +249,7 @@
   return {
     boot: boot,
     // Read-only view of the audio plumbing, used by the browser check and handy
-    // when the scream is silent: it says whether the context runs and whether
+    // when the howl is silent: it says whether the context runs and whether
     // the recording finished decoding.
     audioInfo: function () {
       return {

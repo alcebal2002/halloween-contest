@@ -40,10 +40,10 @@ The maximum score for a ten-question contest is **150 points**.
 | Page | Purpose |
 | --- | --- |
 | [index.html](index.html) | Nickname entry, instructions, quiz, bonus rounds, resume flow, and final results. |
-| [results.html](results.html) | Combined dashboard and leaderboard: four contest KPI tiles across the top, then the top ten distinct names with additional runs grouped beneath each name's best run. Columns show rank, player, score with correct-answer count, elapsed time, and finish time. Refreshes every ten seconds and blinks the top three (with a ghost scream) when they change. |
+| [results.html](results.html) | Combined dashboard and leaderboard: four contest KPI tiles across the top, then the top ten distinct names with additional runs grouped beneath each name's best run. Columns show rank, player, score with correct-answer count, elapsed time, and finish time. Refreshes every ten seconds and blinks the top three (with a wolf howl) when they change. |
 | [podium.html](podium.html) | Top-three display with animated canvas confetti. Loads a snapshot once per page load. |
 
-The results page refreshes every ten seconds while its tab is visible, refreshes when the tab becomes visible again, and provides a manual refresh button. If a later request fails, previously loaded rows remain visible with an error status.
+The results page refreshes every ten seconds, loads immediately, and offers a single **Enable sound** button that disappears once audio is unlocked. If a later request fails, previously loaded rows remain visible with an error status.
 
 Both standings pages use up to **500 result rows**, ordered by descending total score and then ascending server `created_at`. Earlier submissions win score ties; elapsed play time is displayed but is not a tie-breaker. Only runs within that fetched window can appear. Nickname grouping trims surrounding whitespace but is case-sensitive, whereas nickname registration checks uniqueness case-insensitively.
 
