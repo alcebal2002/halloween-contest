@@ -12,12 +12,18 @@
 
   var REFRESH_MS = 10000;
   var SCREAM_URL = "sounds/ghost-scream.mp3";
+  // The recording runs ~11s. A blink should be a punctuation mark, not a
+  // soundtrack, so playback fades out and stops after this many seconds.
+  var SCREAM_SECONDS = 4;
 
   // The scream is a real recording (CC0, see sounds/README.md). It is fetched
   // and decoded once, then replayed from the decoded buffer, because decoding
   // on every change would add a network round-trip to the moment the room
   // should hear the sound.
-  var audio = { ctx: null, buffer: null, loading: false };
+  var audio = { ctx: null, buffer: null, loading: false, queued: false };
+  // Set while an unlock preview is waiting for resume(): the same tap fires
+  // pointerdown and the button's click, and both must not scream.
+  var previewArmed = false;
 
   function audioCtor() {
     return rootRef && (rootRef.AudioContext || rootRef.webkitAudioContext);
@@ -34,46 +40,78 @@
             ctx.decodeAudioData(bytes, resolve, reject);
           });
         })
-        .then(function (buffer) { audio.buffer = buffer; }, function () { /* silent */ })
+        .then(function (buffer) {
+          audio.buffer = buffer;
+          // A change that landed while the file was still decoding is honoured
+          // as soon as the buffer is ready, instead of being lost.
+          if (audio.queued) { audio.queued = false; playGhostScream(); }
+        }, function () { /* silent; the next gesture retries the fetch */ })
         .then(function () { audio.loading = false; });
     } catch (e) { audio.loading = false; }
   }
 
-  function unlockAudio() {
+  function unlockAudio(preview) {
     var AC = audioCtor();
     if (!AC) return;
+    var wasBlocked = !audio.ctx || audio.ctx.state !== "running";
+    var wantPreview = !!wasBlocked && !!preview && !previewArmed;
+    if (wantPreview) previewArmed = true;
     try {
       if (!audio.ctx) audio.ctx = new AC();
       var resumed = (audio.ctx.state === "suspended" && audio.ctx.resume)
         ? audio.ctx.resume()
         : null;
       Promise.resolve(resumed).then(function () {
-        if (audio.ctx && audio.ctx.state === "running") hideSoundButton();
-      }, function () { /* still blocked until the next gesture */ });
+        if (!audio.ctx || audio.ctx.state !== "running") {
+          if (wantPreview) previewArmed = false;
+          return;
+        }
+        hideSoundButton();
+        // Play once when a gesture finally unlocks audio, so the click has
+        // audible feedback and the operator knows the scream is working. Boot
+        // never previews: a permissive browser would scream on page load.
+        if (wantPreview) {
+          previewArmed = false;
+          playGhostScream();
+        }
+      }, function () {
+        // Still blocked until the next gesture: allow a later click to try.
+        if (wantPreview) previewArmed = false;
+      });
       loadScream(audio.ctx);
-    } catch (e) { audio.ctx = null; }
+    } catch (e) { audio.ctx = null; previewArmed = false; }
   }
 
   // Warm the buffer at boot too: a browser that allows audio without a gesture
   // (kiosk flags, prior engagement) then plays a change straight away, and the
   // rest still get their first click or key press to unlock it.
   function prepareAudio() {
-    unlockAudio();
+    unlockAudio(false);
   }
 
   // A browser only allows audio after a user gesture, so this stays silent
-  // until the page has been clicked or a key pressed once.
+  // until the page has been clicked or a key pressed once. A change that
+  // arrives before the recording has decoded is queued rather than dropped.
   function playGhostScream() {
     var ctx = audio.ctx;
-    if (!ctx || ctx.state !== "running" || !audio.buffer) return;
+    if (!ctx || ctx.state !== "running") return;
+    if (!audio.buffer) {
+      if (audio.loading) audio.queued = true;
+      return;
+    }
     try {
+      var t = ctx.currentTime;
+      var dur = Math.min(SCREAM_SECONDS, audio.buffer.duration);
       var src = ctx.createBufferSource();
       var gain = ctx.createGain();
       src.buffer = audio.buffer;
-      gain.gain.value = 0.9;
+      gain.gain.setValueAtTime(0.9, t);
+      gain.gain.setValueAtTime(0.9, t + Math.max(0, dur - 0.7));
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       src.connect(gain);
       gain.connect(ctx.destination);
-      src.start(0);
+      src.start(t);
+      src.stop(t + dur + 0.05);
     } catch (e) { /* sound is decoration; never break the board */ }
   }
 
@@ -96,7 +134,7 @@
     b.className = "btn sound-btn";
     b.textContent = "\ud83d\udd0a Enable sound";
     b.addEventListener("click", function () {
-      unlockAudio();
+      unlockAudio(true);
       if (audio.ctx && audio.ctx.state === "running") hideSoundButton();
     });
     doc.body.appendChild(b);
@@ -112,8 +150,8 @@
     if (!doc || !api) return null;
 
     if (doc.addEventListener) {
-      doc.addEventListener("pointerdown", unlockAudio);
-      doc.addEventListener("keydown", unlockAudio);
+      doc.addEventListener("pointerdown", function () { unlockAudio(true); });
+      doc.addEventListener("keydown", function () { unlockAudio(true); });
     }
     prepareAudio();
     // Give a permissive browser a moment to run the context before offering the
@@ -201,5 +239,18 @@
     return null;
   }
 
-  return { boot: boot };
+  return {
+    boot: boot,
+    // Read-only view of the audio plumbing, used by the browser check and handy
+    // when the scream is silent: it says whether the context runs and whether
+    // the recording finished decoding.
+    audioInfo: function () {
+      return {
+        ctxState: audio.ctx ? audio.ctx.state : "none",
+        buffered: !!audio.buffer,
+        loading: !!audio.loading,
+        duration: audio.buffer ? audio.buffer.duration : 0
+      };
+    }
+  };
 });
