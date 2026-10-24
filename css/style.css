@@ -562,6 +562,35 @@ a.btn { display: block; text-align: center; text-decoration: none; }
 }
 .qr-hint { color: var(--muted); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
 
+/* The button is pinned to the card's top right corner, out of the QR's way. */
+.qr-row { display: flex; justify-content: center; margin: 0 0 18px; }
+.qr-row .qr-block { margin: 0; }
+.timer-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 140px;
+  height: 143px;
+  max-width: 100%;
+  background: transparent;
+  border: 3px solid #d946ef;
+  border-radius: 12px;
+  color: #d946ef;
+  font-family: inherit;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.timer-btn:hover:not(:disabled) { box-shadow: 0 0 24px rgba(217, 70, 239, 0.45); }
+.timer-btn:disabled { cursor: default; color: var(--bone); font-family: var(--sans); font-size: 40px; font-variant-numeric: tabular-nums; }
+
+/* Too narrow to keep the button clear of the QR: stack it underneath. */
+@media (max-width: 559px) {
+  .qr-row { flex-direction: column; align-items: center; row-gap: 16px; }
+  .timer-btn { position: static; }
+}
+
 .lb-foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 14px; }
 
 /* The full table does not fit at 360px. The header row is dropped and every

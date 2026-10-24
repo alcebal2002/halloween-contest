@@ -11,6 +11,7 @@
   "use strict";
 
   var REFRESH_MS = 10000;
+  var COUNTDOWN_MS = 10 * 60 * 1000;
   var HOWL_URL = "sounds/scary.mp3";
   // The recording runs ~11s. A blink should be a punctuation mark, not a
   // soundtrack, so playback fades out and stops after this many seconds.
@@ -166,6 +167,27 @@
     setTimeout(function () { syncSoundButton(doc); }, 600);
 
     var status = doc.getElementById("res-status");
+
+    var timerBtn = doc.getElementById("timer-btn");
+    if (timerBtn) {
+      var PLAY = "\u25B6";
+      timerBtn.addEventListener("click", function () {
+        var endAt = Date.now() + COUNTDOWN_MS;
+        timerBtn.disabled = true;
+        var id = setInterval(function () {
+          var left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+          if (left === 0) {
+            clearInterval(id);
+            timerBtn.disabled = false;
+            timerBtn.textContent = PLAY;
+            return;
+          }
+          var s = left % 60;
+          timerBtn.textContent = Math.floor(left / 60) + ":" + (s < 10 ? "0" : "") + s;
+        }, 250);
+        timerBtn.textContent = "10:00";
+      });
+    }
 
     function loadStats() {
       if (status) {

@@ -7,18 +7,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
 <div class="fog" aria-hidden="true"></div>
 
 <main class="card card-wide">
   <header class="masthead">
-    <figure class="qr-block">
-      <img class="qr-code" src="images/QR.png" width="200" height="204"
-           alt="Scan this QR code to open the GFT Halloween Contest">
-      <figcaption class="qr-hint">Scan to play</figcaption>
-    </figure>
+    <div class="qr-row">
+      <figure class="qr-block">
+        <img class="qr-code" src="images/QR.png" width="200" height="204"
+             alt="Scan this QR code to open the GFT Halloween Contest">
+        <figcaption class="qr-hint">Scan to play</figcaption>
+      </figure>
+      <button id="timer-btn" class="timer-btn" type="button" aria-label="Start the 10 minute countdown">&#9654;</button>
+    </div>
     <h1 class="title">GFT Halloween Contest Results</h1>
     <p id="res-status" class="save-status" aria-live="polite">Loading&hellip;</p>
   </header>
@@ -76,7 +79,7 @@
 <script src="js/results-api.js?v=5"></script>
 <script src="js/control.js?v=3"></script>
 <script src="js/leaderboard.js?v=12"></script>
-<script src="js/results.js?v=10"></script>
+<script src="js/results.js?v=11"></script>
 <script>
   Results.boot(document, ResultsApi, window.SUPABASE_CONFIG);
 </script>
