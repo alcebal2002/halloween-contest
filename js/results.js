@@ -11,7 +11,7 @@
   "use strict";
 
   var REFRESH_MS = 10000;
-  var HOWL_URL = "sounds/wolf-howl.mp3";
+  var HOWL_URL = "sounds/scary.mp3";
   // The recording runs ~11s. A blink should be a punctuation mark, not a
   // soundtrack, so playback fades out and stops after this many seconds.
   var HOWL_SECONDS = 4;
